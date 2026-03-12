@@ -1,6 +1,7 @@
 using SlackNet;
 using SlackNet.Events;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace SlackSitter.Models
 {
@@ -14,6 +15,7 @@ namespace SlackSitter.Models
         public string? PurposeValue => Channel?.Purpose?.Value;
         public int? NumMembers => Channel?.NumMembers;
         public bool IsMember => Channel?.IsMember ?? false;
+        public string? LastMessageTs => Messages?.FirstOrDefault()?.Ts;
 
         public ChannelWithMessages(Conversation channel, List<MessageEvent> messages)
         {

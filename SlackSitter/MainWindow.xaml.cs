@@ -200,14 +200,29 @@ namespace SlackSitter
                         TimesChannelsItemsControl.ItemsSource = _channelsWithMessages;
                         StatusPanel.Visibility = Visibility.Collapsed;
 
-                        // 各チャンネルのメッセージを取得しながら順次表示
+                        // 一時的なリストにチャンネルとメッセージを格納
+                        var tempChannelsList = new List<ChannelWithMessages>();
+
+                        // 各チャンネルのメッセージを取得
                         foreach (var channel in timesChannels)
                         {
                             var messages = await _slackService.GetChannelMessagesAsync(channel.Id, 10);
                             var channelWithMessages = new ChannelWithMessages(channel, messages);
-                            _channelsWithMessages.Add(channelWithMessages);
+                            tempChannelsList.Add(channelWithMessages);
 
                             AddLog($"チャンネル #{channel.Name}: {messages.Count} 件のメッセージを取得");
+                        }
+
+                        // IsMemberの降順、次に最後のメッセージのタイムスタンプの降順で並び替え
+                        var sortedChannels = tempChannelsList
+                            .OrderByDescending(c => c.IsMember)
+                            .ThenByDescending(c => c.LastMessageTs)
+                            .ToList();
+
+                        // 並び替えたチャンネルをObservableCollectionに追加
+                        foreach (var channelWithMessages in sortedChannels)
+                        {
+                            _channelsWithMessages.Add(channelWithMessages);
                         }
 
                         AddLog("=== チャンネル情報の取得完了 ===");
