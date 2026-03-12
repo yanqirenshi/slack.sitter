@@ -380,30 +380,61 @@
             </Grid>
 
             <!-- ユーザーアイコンボタン -->
-            <Button 
-                x:Name="UserAvatarButton"
-                Width="48" 
-                Height="48" 
-                Padding="0"
+            <StackPanel 
+                Orientation="Horizontal" 
                 HorizontalAlignment="Center" 
                 VerticalAlignment="Bottom" 
                 Margin="0,0,0,20"
-                Background="Transparent"
-                BorderThickness="0"
-                CornerRadius="24"
-                Click="UserAvatarButton_Click"
-                Visibility="Collapsed">
+                Spacing="12">
+
+                <!-- データ取得状態インジケーター -->
                 <Border 
+                    x:Name="LoadingIndicatorBorder"
                     Width="48" 
                     Height="48" 
                     CornerRadius="24" 
-                    BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
-                    BorderThickness="2">
+                    BorderThickness="2"
+                    Visibility="Collapsed">
+                    <Border.BorderBrush>
+                        <SolidColorBrush x:Name="LoadingIndicatorBorderBrush" Color="Gray" />
+                    </Border.BorderBrush>
                     <Border.Background>
-                        <ImageBrush x:Name="UserAvatarBrush" Stretch="UniformToFill" />
+                        <SolidColorBrush x:Name="LoadingIndicatorBackgroundBrush" Color="#40808080" />
                     </Border.Background>
+                    <TextBlock 
+                        Text="&#xE774;" 
+                        FontFamily="Segoe MDL2 Assets" 
+                        FontSize="24" 
+                        HorizontalAlignment="Center" 
+                        VerticalAlignment="Center">
+                        <TextBlock.Foreground>
+                            <SolidColorBrush x:Name="LoadingIndicatorForegroundBrush" Color="Gray" />
+                        </TextBlock.Foreground>
+                    </TextBlock>
                 </Border>
-            </Button>
+
+                <Button 
+                    x:Name="UserAvatarButton"
+                    Width="48" 
+                    Height="48" 
+                    Padding="0"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    CornerRadius="24"
+                    Click="UserAvatarButton_Click"
+                    Visibility="Collapsed">
+                    <Border 
+                        Width="48" 
+                        Height="48" 
+                        CornerRadius="24" 
+                        BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
+                        BorderThickness="2">
+                        <Border.Background>
+                            <ImageBrush x:Name="UserAvatarBrush" Stretch="UniformToFill" />
+                        </Border.Background>
+                    </Border>
+                </Button>
+            </StackPanel>
         </Grid>
     </Grid>
 </Window>

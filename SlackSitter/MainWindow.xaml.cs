@@ -130,6 +130,9 @@ namespace SlackSitter
         {
             System.Diagnostics.Debug.WriteLine("=== チャンネル一覧の取得開始 ===");
 
+            // データ取得開始
+            SetLoadingIndicatorState(true);
+
             StatusText.Text = "チャンネル一覧を読み込み中...";
             StatusText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray);
             ErrorText.Visibility = Visibility.Collapsed;
@@ -216,6 +219,31 @@ namespace SlackSitter
                 {
                     RequiredScopesPanel.Visibility = Visibility.Visible;
                 }
+            }
+            finally
+            {
+                // データ取得終了
+                SetLoadingIndicatorState(false);
+            }
+        }
+
+        private void SetLoadingIndicatorState(bool isLoading)
+        {
+            LoadingIndicatorBorder.Visibility = Visibility.Visible;
+
+            if (isLoading)
+            {
+                // データ取得中は赤系の色
+                LoadingIndicatorBorderBrush.Color = Microsoft.UI.Colors.Red;
+                LoadingIndicatorBackgroundBrush.Color = Windows.UI.Color.FromArgb(64, 255, 0, 0); // 半透明の赤
+                LoadingIndicatorForegroundBrush.Color = Microsoft.UI.Colors.Red;
+            }
+            else
+            {
+                // データ取得していない時はグレー系の色
+                LoadingIndicatorBorderBrush.Color = Microsoft.UI.Colors.Gray;
+                LoadingIndicatorBackgroundBrush.Color = Windows.UI.Color.FromArgb(64, 128, 128, 128); // 半透明のグレー
+                LoadingIndicatorForegroundBrush.Color = Microsoft.UI.Colors.Gray;
             }
         }
 
