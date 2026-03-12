@@ -18,7 +18,7 @@
         <Grid.Resources>
             <converters:TimestampToDateTimeConverter x:Key="TimestampToDateTimeConverter" />
         </Grid.Resources>
-        <Grid x:Name="AuthenticationPanel" Visibility="Visible">
+        <Grid x:Name="AuthenticationPanel" Visibility="Collapsed">
             <StackPanel 
                 HorizontalAlignment="Center" 
                 VerticalAlignment="Center" 

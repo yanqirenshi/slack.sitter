@@ -69,6 +69,10 @@ namespace SlackSitter
                 AccessTokenPasswordBox.Password = settings.AccessToken;
                 await AuthenticateWithToken(settings.AccessToken);
             }
+            else
+            {
+                AuthenticationPanel.Visibility = Visibility.Visible;
+            }
         }
 
         private async void AuthenticateButton_Click(object sender, RoutedEventArgs e)
