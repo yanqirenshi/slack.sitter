@@ -153,7 +153,7 @@ namespace SlackSitter.Services
 
                 if (response.Messages != null)
                 {
-                    return response.Messages.OrderBy(m => m.Ts).ToList();
+                    return response.Messages.OrderByDescending(m => m.Ts).ToList();
                 }
 
                 return new List<SlackNet.Events.MessageEvent>();
