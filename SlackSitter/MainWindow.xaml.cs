@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices.WindowsRuntime;
@@ -23,12 +24,14 @@ namespace SlackSitter
         private readonly SettingsService _settingsService;
         private string? _currentUserId;
         private string? _currentUserName;
+        private ObservableCollection<ChannelWithMessages> _channelsWithMessages;
 
         public MainWindow()
         {
             InitializeComponent();
             _slackService = new SlackService();
             _settingsService = new SettingsService();
+            _channelsWithMessages = new ObservableCollection<ChannelWithMessages>();
 
             System.Diagnostics.Debug.WriteLine($".env file path: {_settingsService.GetEnvFilePath()}");
 
@@ -162,22 +165,23 @@ namespace SlackSitter
                     {
                         StatusText.Text = "メッセージを読み込み中...";
 
-                        // 各チャンネルのメッセージを取得
-                        var channelsWithMessages = new List<ChannelWithMessages>();
+                        // ObservableCollectionをクリアして、ItemsSourceに設定
+                        _channelsWithMessages.Clear();
+                        TimesChannelsItemsControl.ItemsSource = _channelsWithMessages;
+                        StatusPanel.Visibility = Visibility.Collapsed;
+
+                        // 各チャンネルのメッセージを取得しながら順次表示
                         foreach (var channel in timesChannels)
                         {
                             var messages = await _slackService.GetChannelMessagesAsync(channel.Id, 10);
-                            channelsWithMessages.Add(new ChannelWithMessages(channel, messages));
+                            var channelWithMessages = new ChannelWithMessages(channel, messages);
+                            _channelsWithMessages.Add(channelWithMessages);
 
                             System.Diagnostics.Debug.WriteLine($"チャンネル #{channel.Name}: {messages.Count} 件のメッセージを取得");
                         }
 
-                        // ItemsControlにチャンネルを設定
-                        TimesChannelsItemsControl.ItemsSource = channelsWithMessages;
-                        StatusPanel.Visibility = Visibility.Collapsed;
-
                         System.Diagnostics.Debug.WriteLine("=== #times* チャンネル一覧 ===");
-                        foreach (var channelWithMessages in channelsWithMessages)
+                        foreach (var channelWithMessages in _channelsWithMessages)
                         {
                             var channel = channelWithMessages.Channel;
                             var channelType = channel.IsPrivate ? "プライベート" : "パブリック";
