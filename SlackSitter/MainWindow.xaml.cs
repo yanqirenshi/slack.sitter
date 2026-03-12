@@ -13,6 +13,7 @@ using Microsoft.UI.Xaml.Navigation;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
 using SlackSitter.Services;
+using SlackSitter.Models;
 
 namespace SlackSitter
 {
@@ -20,6 +21,8 @@ namespace SlackSitter
     {
         private readonly SlackService _slackService;
         private readonly SettingsService _settingsService;
+        private string? _currentUserId;
+        private string? _currentUserName;
 
         public MainWindow()
         {
@@ -30,6 +33,31 @@ namespace SlackSitter
             System.Diagnostics.Debug.WriteLine($".env file path: {_settingsService.GetEnvFilePath()}");
 
             LoadSettingsAndAuthenticate();
+        }
+
+        private void ChannelScrollViewer_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            if (TimesChannelsItemsControl.ItemsPanelRoot is StackPanel panel)
+            {
+                var scrollViewer = sender as ScrollViewer;
+                if (scrollViewer != null)
+                {
+                    var availableHeight = scrollViewer.ActualHeight - 40;
+                    panel.Height = availableHeight;
+
+                    for (int i = 0; i < TimesChannelsItemsControl.Items.Count; i++)
+                    {
+                        var container = TimesChannelsItemsControl.ContainerFromIndex(i);
+                        if (container != null)
+                        {
+                            if (VisualTreeHelper.GetChild(container, 0) is Border border)
+                            {
+                                border.Height = availableHeight;
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         private async void LoadSettingsAndAuthenticate()
@@ -81,6 +109,7 @@ namespace SlackSitter
 
                 EnvPathText.Text = $".env ファイルの保存先: {_settingsService.GetEnvFilePath()}";
 
+                await LoadUserAvatarAsync();
                 await LoadChannelsAsync();
             }
             else
@@ -98,6 +127,7 @@ namespace SlackSitter
             StatusText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray);
             ErrorText.Visibility = Visibility.Collapsed;
             RequiredScopesPanel.Visibility = Visibility.Collapsed;
+            StatusPanel.Visibility = Visibility.Visible;
 
             try
             {
@@ -113,27 +143,54 @@ namespace SlackSitter
                 }
                 else
                 {
-                    StatusText.Text = $"✅ チャンネル {channels.Count} 件を取得しました";
-                    StatusText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Green);
-                    ErrorText.Visibility = Visibility.Collapsed;
-                    RequiredScopesPanel.Visibility = Visibility.Collapsed;
+                    // #times* で始まるチャンネルをフィルタリング
+                    var timesChannels = channels
+                        .Where(c => c.Name != null && c.Name.StartsWith("times"))
+                        .OrderBy(c => c.Name)
+                        .ToList();
 
                     System.Diagnostics.Debug.WriteLine($"取得したチャンネル数: {channels.Count}");
+                    System.Diagnostics.Debug.WriteLine($"#times* チャンネル数: {timesChannels.Count}");
                     System.Diagnostics.Debug.WriteLine("");
 
-                    foreach (var channel in channels.OrderBy(c => c.Name))
+                    if (timesChannels.Count > 0)
                     {
-                        var channelType = channel.IsPrivate ? "プライベート" : "パブリック";
-                        var memberCount = channel.NumMembers;
+                        StatusText.Text = "メッセージを読み込み中...";
 
-                        System.Diagnostics.Debug.WriteLine($"チャンネル: #{channel.Name}");
-                        System.Diagnostics.Debug.WriteLine($"  ID: {channel.Id}");
-                        System.Diagnostics.Debug.WriteLine($"  種類: {channelType}");
-                        System.Diagnostics.Debug.WriteLine($"  メンバー数: {memberCount}");
-                        System.Diagnostics.Debug.WriteLine($"  トピック: {channel.Topic?.Value ?? "(なし)"}");
-                        System.Diagnostics.Debug.WriteLine($"  説明: {channel.Purpose?.Value ?? "(なし)"}");
-                        System.Diagnostics.Debug.WriteLine($"  状態: {(channel.IsArchived ? "アーカイブ済み" : "アクティブ")}");
-                        System.Diagnostics.Debug.WriteLine("");
+                        // 各チャンネルのメッセージを取得
+                        var channelsWithMessages = new List<ChannelWithMessages>();
+                        foreach (var channel in timesChannels)
+                        {
+                            var messages = await _slackService.GetChannelMessagesAsync(channel.Id, 10);
+                            channelsWithMessages.Add(new ChannelWithMessages(channel, messages));
+
+                            System.Diagnostics.Debug.WriteLine($"チャンネル #{channel.Name}: {messages.Count} 件のメッセージを取得");
+                        }
+
+                        // ItemsControlにチャンネルを設定
+                        TimesChannelsItemsControl.ItemsSource = channelsWithMessages;
+                        StatusPanel.Visibility = Visibility.Collapsed;
+
+                        System.Diagnostics.Debug.WriteLine("=== #times* チャンネル一覧 ===");
+                        foreach (var channelWithMessages in channelsWithMessages)
+                        {
+                            var channel = channelWithMessages.Channel;
+                            var channelType = channel.IsPrivate ? "プライベート" : "パブリック";
+                            System.Diagnostics.Debug.WriteLine($"チャンネル: #{channel.Name}");
+                            System.Diagnostics.Debug.WriteLine($"  ID: {channel.Id}");
+                            System.Diagnostics.Debug.WriteLine($"  種類: {channelType}");
+                            System.Diagnostics.Debug.WriteLine($"  メンバー数: {channel.NumMembers}");
+                            System.Diagnostics.Debug.WriteLine($"  トピック: {channel.Topic?.Value ?? "(なし)"}");
+                            System.Diagnostics.Debug.WriteLine($"  説明: {channel.Purpose?.Value ?? "(なし)"}");
+                            System.Diagnostics.Debug.WriteLine($"  メッセージ数: {channelWithMessages.Messages.Count}");
+                            System.Diagnostics.Debug.WriteLine("");
+                        }
+                    }
+                    else
+                    {
+                        StatusText.Text = "⚠️ #times* で始まるチャンネルが見つかりませんでした";
+                        StatusText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Orange);
+                        StatusPanel.Visibility = Visibility.Visible;
                     }
 
                     System.Diagnostics.Debug.WriteLine("=== チャンネル一覧の取得完了 ===");
@@ -155,6 +212,111 @@ namespace SlackSitter
 
         private async void LogoutButton_Click(object sender, RoutedEventArgs e)
         {
+            await LogoutAsync();
+        }
+
+        private async System.Threading.Tasks.Task LoadUserAvatarAsync()
+        {
+            try
+            {
+                var (userId, userName, userImageUrl) = await _slackService.GetCurrentUserInfoAsync();
+
+                if (!string.IsNullOrEmpty(userImageUrl))
+                {
+                    System.Diagnostics.Debug.WriteLine($"ユーザーアイコンを読み込み中: {userName} ({userId})");
+                    System.Diagnostics.Debug.WriteLine($"アイコンURL: {userImageUrl}");
+
+                    _currentUserId = userId;
+                    _currentUserName = userName;
+
+                    var bitmap = new Microsoft.UI.Xaml.Media.Imaging.BitmapImage(new Uri(userImageUrl));
+                    UserAvatarBrush.ImageSource = bitmap;
+                    PopupAvatarBrush.ImageSource = bitmap;
+                    UserAvatarButton.Visibility = Visibility.Visible;
+
+                    PopupUserNameText.Text = userName ?? "Unknown";
+                    PopupUserIdText.Text = userId ?? "";
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("ユーザーアイコンの取得に失敗しました");
+                    UserAvatarButton.Visibility = Visibility.Collapsed;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"ユーザーアイコンの読み込み中にエラーが発生: {ex.Message}");
+                UserAvatarButton.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        private void UserAvatarButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (UserPopupBorder.Visibility == Visibility.Visible)
+            {
+                UserPopupBorder.Visibility = Visibility.Collapsed;
+            }
+            else
+            {
+                UserPopupBorder.Visibility = Visibility.Visible;
+            }
+        }
+
+        private async void PopupLogoutButton_Click(object sender, RoutedEventArgs e)
+        {
+            UserPopupBorder.Visibility = Visibility.Collapsed;
+            await LogoutAsync();
+        }
+
+        private async void PopupUpdateTokenButton_Click(object sender, RoutedEventArgs e)
+        {
+            var newAccessToken = PopupAccessTokenPasswordBox.Password;
+
+            if (string.IsNullOrWhiteSpace(newAccessToken))
+            {
+                PopupTokenStatusText.Text = "トークンを入力してください";
+                PopupTokenStatusText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Red);
+                PopupTokenStatusText.Visibility = Visibility.Visible;
+                return;
+            }
+
+            PopupUpdateTokenButton.IsEnabled = false;
+            PopupTokenStatusText.Text = "認証中...";
+            PopupTokenStatusText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray);
+            PopupTokenStatusText.Visibility = Visibility.Visible;
+
+            var success = await _slackService.AuthenticateAsync(newAccessToken);
+
+            if (success)
+            {
+                var settings = new SettingsService.Settings
+                {
+                    AccessToken = newAccessToken
+                };
+                await _settingsService.SaveSettingsAsync(settings);
+
+                PopupTokenStatusText.Text = "✅ トークンを更新しました";
+                PopupTokenStatusText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Green);
+                PopupAccessTokenPasswordBox.Password = string.Empty;
+
+                await LoadUserAvatarAsync();
+                await LoadChannelsAsync();
+
+                await System.Threading.Tasks.Task.Delay(2000);
+                PopupTokenStatusText.Visibility = Visibility.Collapsed;
+                UserPopupBorder.Visibility = Visibility.Collapsed;
+            }
+            else
+            {
+                PopupTokenStatusText.Text = "❌ 認証に失敗しました";
+                PopupTokenStatusText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Red);
+            }
+
+            PopupUpdateTokenButton.IsEnabled = true;
+        }
+
+        private async System.Threading.Tasks.Task LogoutAsync()
+        {
             var settings = new SettingsService.Settings
             {
                 AccessToken = null
@@ -166,6 +328,8 @@ namespace SlackSitter
 
             MainPanel.Visibility = Visibility.Collapsed;
             AuthenticationPanel.Visibility = Visibility.Visible;
+            UserAvatarButton.Visibility = Visibility.Collapsed;
+            UserPopupBorder.Visibility = Visibility.Collapsed;
         }
     }
 }

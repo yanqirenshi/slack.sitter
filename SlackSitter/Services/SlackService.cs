@@ -81,9 +81,13 @@ namespace SlackSitter.Services
                     System.Diagnostics.Debug.WriteLine("必要な権限が不足しています。");
                     System.Diagnostics.Debug.WriteLine("Slack App の OAuth Scopes に以下の権限を追加してください：");
                     System.Diagnostics.Debug.WriteLine("  - channels:read");
+                    System.Diagnostics.Debug.WriteLine("  - channels:history");
                     System.Diagnostics.Debug.WriteLine("  - groups:read");
+                    System.Diagnostics.Debug.WriteLine("  - groups:history");
                     System.Diagnostics.Debug.WriteLine("  - mpim:read");
+                    System.Diagnostics.Debug.WriteLine("  - mpim:history");
                     System.Diagnostics.Debug.WriteLine("  - im:read");
+                    System.Diagnostics.Debug.WriteLine("  - im:history");
                     System.Diagnostics.Debug.WriteLine("  - users:read");
                     System.Diagnostics.Debug.WriteLine("  - chat:write");
                 }
@@ -104,6 +108,61 @@ namespace SlackSitter.Services
         public string? GetAccessToken()
         {
             return _accessToken;
+        }
+
+        public async Task<(string? UserId, string? UserName, string? UserImageUrl)> GetCurrentUserInfoAsync()
+        {
+            if (_client == null)
+            {
+                return (null, null, null);
+            }
+
+            try
+            {
+                var authTest = await _client.Auth.Test();
+                var userId = authTest.UserId;
+
+                if (!string.IsNullOrEmpty(userId))
+                {
+                    var userInfo = await _client.Users.Info(userId);
+                    var userName = userInfo.Name;
+                    var userImageUrl = userInfo.Profile?.Image192 ?? userInfo.Profile?.Image72;
+
+                    return (userId, userName, userImageUrl);
+                }
+
+                return (null, null, null);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error getting user info: {ex.Message}");
+                return (null, null, null);
+            }
+        }
+
+        public async Task<List<SlackNet.Events.MessageEvent>> GetChannelMessagesAsync(string channelId, int limit = 10)
+        {
+            if (_client == null)
+            {
+                return new List<SlackNet.Events.MessageEvent>();
+            }
+
+            try
+            {
+                var response = await _client.Conversations.History(channelId, limit: limit);
+
+                if (response.Messages != null)
+                {
+                    return response.Messages.OrderBy(m => m.Ts).ToList();
+                }
+
+                return new List<SlackNet.Events.MessageEvent>();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error getting messages for channel {channelId}: {ex.Message}");
+                return new List<SlackNet.Events.MessageEvent>();
+            }
         }
     }
 }
