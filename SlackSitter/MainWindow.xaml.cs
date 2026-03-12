@@ -25,6 +25,7 @@ namespace SlackSitter
         private string? _currentUserId;
         private string? _currentUserName;
         private ObservableCollection<ChannelWithMessages> _channelsWithMessages;
+        private ObservableCollection<string> _logMessages;
 
         public MainWindow()
         {
@@ -32,8 +33,10 @@ namespace SlackSitter
             _slackService = new SlackService();
             _settingsService = new SettingsService();
             _channelsWithMessages = new ObservableCollection<ChannelWithMessages>();
+            _logMessages = new ObservableCollection<string>();
+            LogItemsControl.ItemsSource = _logMessages;
 
-            System.Diagnostics.Debug.WriteLine($".env file path: {_settingsService.GetEnvFilePath()}");
+            AddLog($".env file path: {_settingsService.GetEnvFilePath()}");
 
             LoadSettingsAndAuthenticate();
         }
@@ -60,6 +63,25 @@ namespace SlackSitter
                         }
                     }
                 }
+            }
+        }
+
+        private void AddLog(string message)
+        {
+            var timestamp = DateTime.Now.ToString("HH:mm:ss");
+            _logMessages.Add($"[{timestamp}] {message}");
+        }
+
+        private void LoadingIndicatorButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (LogPopupBorder.Visibility == Visibility.Visible)
+            {
+                LogPopupBorder.Visibility = Visibility.Collapsed;
+            }
+            else
+            {
+                LogPopupBorder.Visibility = Visibility.Visible;
+                UserPopupBorder.Visibility = Visibility.Collapsed;
             }
         }
 
@@ -128,10 +150,10 @@ namespace SlackSitter
 
         private async System.Threading.Tasks.Task LoadChannelsAsync()
         {
-            System.Diagnostics.Debug.WriteLine("=== チャンネル一覧の取得開始 ===");
+            AddLog("=== チャンネル一覧の取得開始 ===");
 
             // データ取得中インジケーターを赤色に設定
-            LoadingIndicator.Visibility = Visibility.Visible;
+            LoadingIndicatorButton.Visibility = Visibility.Visible;
             LoadingIndicator.BorderBrush = new SolidColorBrush(Microsoft.UI.Colors.Red);
             LoadingIcon.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Red);
 
@@ -151,7 +173,7 @@ namespace SlackSitter
                     ErrorText.Text = "⚠️ チャンネルの取得に失敗しました。トークンの権限を確認してください。";
                     ErrorText.Visibility = Visibility.Visible;
                     RequiredScopesPanel.Visibility = Visibility.Visible;
-                    System.Diagnostics.Debug.WriteLine("チャンネルが取得できませんでした。権限を確認してください。");
+                    AddLog("チャンネルが取得できませんでした。権限を確認してください。");
 
                     // インジケーターをグレーに設定
                     LoadingIndicator.BorderBrush = new SolidColorBrush(Microsoft.UI.Colors.Gray);
@@ -166,9 +188,8 @@ namespace SlackSitter
                         .ThenBy(c => c.Name)
                         .ToList();
 
-                    System.Diagnostics.Debug.WriteLine($"取得したチャンネル数: {channels.Count}");
-                    System.Diagnostics.Debug.WriteLine($"#times* チャンネル数: {timesChannels.Count}");
-                    System.Diagnostics.Debug.WriteLine("");
+                    AddLog($"取得したチャンネル数: {channels.Count}");
+                    AddLog($"#times* チャンネル数: {timesChannels.Count}");
 
                     if (timesChannels.Count > 0)
                     {
@@ -186,23 +207,10 @@ namespace SlackSitter
                             var channelWithMessages = new ChannelWithMessages(channel, messages);
                             _channelsWithMessages.Add(channelWithMessages);
 
-                            System.Diagnostics.Debug.WriteLine($"チャンネル #{channel.Name}: {messages.Count} 件のメッセージを取得");
+                            AddLog($"チャンネル #{channel.Name}: {messages.Count} 件のメッセージを取得");
                         }
 
-                        System.Diagnostics.Debug.WriteLine("=== #times* チャンネル一覧 ===");
-                        foreach (var channelWithMessages in _channelsWithMessages)
-                        {
-                            var channel = channelWithMessages.Channel;
-                            var channelType = channel.IsPrivate ? "プライベート" : "パブリック";
-                            System.Diagnostics.Debug.WriteLine($"チャンネル: #{channel.Name}");
-                            System.Diagnostics.Debug.WriteLine($"  ID: {channel.Id}");
-                            System.Diagnostics.Debug.WriteLine($"  種類: {channelType}");
-                            System.Diagnostics.Debug.WriteLine($"  メンバー数: {channel.NumMembers}");
-                            System.Diagnostics.Debug.WriteLine($"  トピック: {channel.Topic?.Value ?? "(なし)"}");
-                            System.Diagnostics.Debug.WriteLine($"  説明: {channel.Purpose?.Value ?? "(なし)"}");
-                            System.Diagnostics.Debug.WriteLine($"  メッセージ数: {channelWithMessages.Messages.Count}");
-                            System.Diagnostics.Debug.WriteLine("");
-                        }
+                        AddLog("=== チャンネル情報の取得完了 ===");
 
                         // データ取得完了 - インジケーターをグレーに変更
                         LoadingIndicator.BorderBrush = new SolidColorBrush(Microsoft.UI.Colors.Gray);
@@ -219,12 +227,12 @@ namespace SlackSitter
                         LoadingIcon.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray);
                     }
 
-                    System.Diagnostics.Debug.WriteLine("=== チャンネル一覧の取得完了 ===");
+                    AddLog("=== チャンネル一覧の取得完了 ===");
                 }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"チャンネル取得中にエラーが発生: {ex.Message}");
+                AddLog($"チャンネル取得中にエラーが発生: {ex.Message}");
                 StatusText.Text = "";
                 ErrorText.Text = $"⚠️ エラーが発生しました: {ex.Message}";
                 ErrorText.Visibility = Visibility.Visible;
@@ -248,8 +256,7 @@ namespace SlackSitter
 
                 if (!string.IsNullOrEmpty(userImageUrl))
                 {
-                    System.Diagnostics.Debug.WriteLine($"ユーザーアイコンを読み込み中: {userName} ({userId})");
-                    System.Diagnostics.Debug.WriteLine($"アイコンURL: {userImageUrl}");
+                    AddLog($"ユーザーアイコンを読み込み中: {userName} ({userId})");
 
                     _currentUserId = userId;
                     _currentUserName = userName;
@@ -284,6 +291,7 @@ namespace SlackSitter
             else
             {
                 UserPopupBorder.Visibility = Visibility.Visible;
+                LogPopupBorder.Visibility = Visibility.Collapsed;
             }
         }
 

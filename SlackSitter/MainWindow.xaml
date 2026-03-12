@@ -280,7 +280,7 @@
                 x:Name="UserPopupBorder"
                 HorizontalAlignment="Center" 
                 VerticalAlignment="Bottom" 
-                Margin="0,0,0,75"
+                Margin="59,0,0,75"
                 Visibility="Collapsed">
 
                 <!-- メインの吹き出しボックス -->
@@ -379,24 +379,93 @@
                     Margin="0,0,0,0" />
             </Grid>
 
+            <!-- ログ表示ポップアップ -->
+            <Grid 
+                x:Name="LogPopupBorder"
+                HorizontalAlignment="Center" 
+                VerticalAlignment="Bottom" 
+                Margin="-59,0,0,75"
+                Visibility="Collapsed">
+
+                <!-- メインの吹き出しボックス -->
+                <Border 
+                    Background="{ThemeResource LayerFillColorDefaultBrush}" 
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" 
+                    BorderThickness="1" 
+                    CornerRadius="8" 
+                    Padding="16"
+                    MinWidth="400"
+                    MaxWidth="600"
+                    Margin="0,0,0,15">
+                    <StackPanel Spacing="12">
+                        <TextBlock 
+                            Text="データ取得ログ" 
+                            FontWeight="SemiBold" 
+                            FontSize="14" />
+
+                        <Border 
+                            Height="1" 
+                            Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+
+                        <!-- ログ表示エリア -->
+                        <ScrollViewer 
+                            MaxHeight="300"
+                            VerticalScrollBarVisibility="Auto">
+                            <ItemsControl x:Name="LogItemsControl">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock 
+                                            Text="{Binding}" 
+                                            FontSize="11" 
+                                            FontFamily="Consolas"
+                                            TextWrapping="Wrap"
+                                            Margin="0,2" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </StackPanel>
+                </Border>
+
+                <!-- 吹き出しのポインター（三角形） -->
+                <Polygon 
+                    Points="0,0 10,15 20,0" 
+                    Fill="{ThemeResource LayerFillColorDefaultBrush}" 
+                    Stroke="{ThemeResource CardStrokeColorDefaultBrush}"
+                    StrokeThickness="1"
+                    HorizontalAlignment="Center" 
+                    VerticalAlignment="Bottom" 
+                    Margin="0,0,0,0" />
+            </Grid>
+
             <!-- データ取得状況インジケーター -->
-            <Border 
-                x:Name="LoadingIndicator"
+            <Button 
+                x:Name="LoadingIndicatorButton"
                 Width="48" 
                 Height="48" 
-                CornerRadius="24" 
+                Padding="0"
                 HorizontalAlignment="Center" 
                 VerticalAlignment="Bottom" 
                 Margin="-59,0,0,20"
-                Background="{ThemeResource LayerFillColorDefaultBrush}"
-                BorderThickness="2"
+                Background="Transparent"
+                BorderThickness="0"
+                CornerRadius="24"
+                Click="LoadingIndicatorButton_Click"
                 Visibility="Collapsed">
-                <FontIcon 
-                    x:Name="LoadingIcon"
-                    Glyph="&#xE895;" 
-                    FontSize="24" 
-                    Foreground="Gray" />
-            </Border>
+                <Border 
+                    Width="48" 
+                    Height="48" 
+                    CornerRadius="24" 
+                    x:Name="LoadingIndicator"
+                    Background="{ThemeResource LayerFillColorDefaultBrush}"
+                    BorderThickness="2">
+                    <FontIcon 
+                        x:Name="LoadingIcon"
+                        Glyph="&#xE895;" 
+                        FontSize="24" 
+                        Foreground="Gray" />
+                </Border>
+            </Button>
 
             <!-- ユーザーアイコンボタン -->
             <Button 
