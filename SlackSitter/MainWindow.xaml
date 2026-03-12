@@ -272,20 +272,6 @@
                             Foreground="Gray" />
                     </StackPanel>
                 </Border>
-
-                <TextBlock 
-                    x:Name="EnvPathText" 
-                    Text="" 
-                    FontSize="12" 
-                    HorizontalAlignment="Center" 
-                    TextWrapping="Wrap" 
-                    Foreground="Gray" />
-
-                <Button 
-                    x:Name="LogoutButton" 
-                    Content="ログアウト" 
-                    Click="LogoutButton_Click" 
-                    HorizontalAlignment="Center" />
             </StackPanel>
 
             <!-- 吹き出しポップアップ -->
@@ -364,6 +350,15 @@
                         <Border 
                             Height="1" 
                             Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+
+                        <!-- envファイルパス表示 -->
+                        <TextBlock 
+                            x:Name="EnvPathText" 
+                            Text="" 
+                            FontSize="11" 
+                            TextWrapping="Wrap" 
+                            Foreground="Gray" 
+                            TextAlignment="Center" />
 
                         <Button 
                             Content="ログアウト" 

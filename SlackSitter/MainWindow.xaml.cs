@@ -210,11 +210,6 @@ namespace SlackSitter
             }
         }
 
-        private async void LogoutButton_Click(object sender, RoutedEventArgs e)
-        {
-            await LogoutAsync();
-        }
-
         private async System.Threading.Tasks.Task LoadUserAvatarAsync()
         {
             try
