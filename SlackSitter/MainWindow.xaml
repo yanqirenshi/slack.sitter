@@ -17,6 +17,7 @@
     <Grid>
         <Grid.Resources>
             <converters:TimestampToDateTimeConverter x:Key="TimestampToDateTimeConverter" />
+            <converters:BooleanToHeaderBrushConverter x:Key="BooleanToHeaderBrushConverter" />
         </Grid.Resources>
         <Grid x:Name="AuthenticationPanel" Visibility="Collapsed">
             <StackPanel 
@@ -130,7 +131,7 @@
                                     <!-- チャンネル名ヘッダー -->
                                     <Border 
                                         Grid.Row="0"
-                                        Background="{ThemeResource AccentFillColorDefaultBrush}" 
+                                        Background="{Binding IsMember, Converter={StaticResource BooleanToHeaderBrushConverter}}" 
                                         CornerRadius="8,8,0,0" 
                                         Padding="16,12">
                                         <TextBlock 

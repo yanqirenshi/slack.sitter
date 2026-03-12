@@ -13,6 +13,7 @@ namespace SlackSitter.Models
         public string? TopicValue => Channel?.Topic?.Value;
         public string? PurposeValue => Channel?.Purpose?.Value;
         public int? NumMembers => Channel?.NumMembers;
+        public bool IsMember => Channel?.IsMember ?? false;
 
         public ChannelWithMessages(Conversation channel, List<MessageEvent> messages)
         {

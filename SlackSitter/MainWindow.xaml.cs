@@ -150,7 +150,8 @@ namespace SlackSitter
                     // #times* で始まるチャンネルをフィルタリング
                     var timesChannels = channels
                         .Where(c => c.Name != null && c.Name.StartsWith("times"))
-                        .OrderBy(c => c.Name)
+                        .OrderByDescending(c => c.IsMember)
+                        .ThenBy(c => c.Name)
                         .ToList();
 
                     System.Diagnostics.Debug.WriteLine($"取得したチャンネル数: {channels.Count}");
