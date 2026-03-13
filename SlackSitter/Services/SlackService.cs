@@ -14,6 +14,7 @@ namespace SlackSitter.Services
         private ISlackApiClient? _client;
         private string? _accessToken;
         private string? _workspaceUrl;
+        private readonly Dictionary<string, string?> _userImageUrlCache = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
 
         public bool IsAuthenticated => _client != null && !string.IsNullOrEmpty(_accessToken);
 
@@ -29,6 +30,7 @@ namespace SlackSitter.Services
 
                 var authTest = await _client.Auth.Test();
                 _workspaceUrl = authTest.Url;
+                _userImageUrlCache.Clear();
 
                 if (!string.IsNullOrEmpty(authTest.UserId))
                 {
@@ -175,6 +177,33 @@ namespace SlackSitter.Services
             {
                 System.Diagnostics.Debug.WriteLine($"Error getting user info: {ex.Message}");
                 return (null, null, null);
+            }
+        }
+
+        public async Task<string?> GetUserImageUrlAsync(string? userId)
+        {
+            if (_client == null || string.IsNullOrWhiteSpace(userId))
+            {
+                return null;
+            }
+
+            if (_userImageUrlCache.TryGetValue(userId, out var cachedImageUrl))
+            {
+                return cachedImageUrl;
+            }
+
+            try
+            {
+                var userInfo = await _client.Users.Info(userId);
+                var userImageUrl = userInfo.Profile?.Image72 ?? userInfo.Profile?.Image48 ?? userInfo.Profile?.Image32;
+                _userImageUrlCache[userId] = userImageUrl;
+                return userImageUrl;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error getting user image for {userId}: {ex.Message}");
+                _userImageUrlCache[userId] = null;
+                return null;
             }
         }
 

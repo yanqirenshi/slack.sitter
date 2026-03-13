@@ -49,18 +49,30 @@ namespace SlackSitter.Models
         public string? User { get; }
         public string? Ts { get; }
         public string? Text { get; }
+        public Uri? UserAvatarUri { get; }
         public Uri? PermalinkUri { get; }
         public IReadOnlyList<MessageInlineSegment> Segments { get; }
         public IReadOnlyList<MessageImageItem> Images { get; }
 
-        public MessageDisplayItem(MessageEvent message, string channelId, string? workspaceUrl)
+        public MessageDisplayItem(MessageEvent message, string channelId, string? workspaceUrl, string? userAvatarUrl = null)
         {
             User = message.User;
             Ts = message.Ts;
             Text = message.Text;
+            UserAvatarUri = CreateUri(userAvatarUrl);
             PermalinkUri = CreatePermalinkUri(workspaceUrl, channelId, message.Ts);
             Segments = ParseSegments(message.Text);
             Images = ExtractImages(message);
+        }
+
+        private static Uri? CreateUri(string? uriText)
+        {
+            if (string.IsNullOrWhiteSpace(uriText) || !Uri.TryCreate(uriText, UriKind.Absolute, out var uri))
+            {
+                return null;
+            }
+
+            return uri;
         }
 
         private static IReadOnlyList<MessageImageItem> ExtractImages(MessageEvent message)

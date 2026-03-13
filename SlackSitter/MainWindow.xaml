@@ -160,8 +160,13 @@
                                                             <RowDefinition Height="Auto" />
                                                             <RowDefinition Height="Auto" />
                                                         </Grid.RowDefinitions>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="40" />
+                                                            <ColumnDefinition Width="*" />
+                                                        </Grid.ColumnDefinitions>
                                                         <HyperlinkButton
                                                             Grid.Row="0"
+                                                            Grid.Column="1"
                                                             NavigateUri="{Binding PermalinkUri}"
                                                             Padding="0"
                                                             HorizontalAlignment="Right"
@@ -171,8 +176,22 @@
                                                                 FontSize="10"
                                                                 Foreground="Gray" />
                                                         </HyperlinkButton>
+                                                        <Border
+                                                            Grid.Row="1"
+                                                            Grid.Column="0"
+                                                            Width="28"
+                                                            Height="28"
+                                                            CornerRadius="14"
+                                                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                                            BorderThickness="1"
+                                                            Background="White"
+                                                            Margin="0,2,4,0"
+                                                            VerticalAlignment="Top"
+                                                            Tag="{Binding}"
+                                                            Loaded="MessageAvatarBorder_Loaded" />
                                                         <Border 
                                                             Grid.Row="1"
+                                                            Grid.Column="1"
                                                             Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                                                             BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                                                             BorderThickness="1"
@@ -552,6 +571,7 @@
                 Background="White"
                 BorderThickness="0"
                 CornerRadius="24"
+                Click="CircleIcon1Button_Click"
                 Visibility="Collapsed">
                 <Border
                     Width="48"
@@ -580,6 +600,7 @@
                 Background="White"
                 BorderThickness="0"
                 CornerRadius="24"
+                Click="CircleIcon2Button_Click"
                 Visibility="Collapsed">
                 <Border
                     Width="48"

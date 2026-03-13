@@ -29,6 +29,13 @@ namespace SlackSitter
 {
     public sealed partial class MainWindow : Window
     {
+        private enum ChannelDisplayFilter
+        {
+            All,
+            JoinedOnly,
+            NotJoinedOnly
+        }
+
         private const int MaxConcurrentMessageLoads = 4;
         private readonly SlackService _slackService;
         private readonly SettingsService _settingsService;
@@ -37,7 +44,9 @@ namespace SlackSitter
         private string? _currentUserName;
         private ObservableCollection<ChannelWithMessages> _channelsWithMessages;
         private ObservableCollection<string> _logMessages;
+        private readonly List<ChannelWithMessages> _allChannels = new List<ChannelWithMessages>();
         private Dictionary<string, string> _customEmojiMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        private ChannelDisplayFilter _currentChannelDisplayFilter = ChannelDisplayFilter.All;
 
         public MainWindow()
         {
@@ -121,6 +130,27 @@ namespace SlackSitter
             _channelsWithMessages.Insert(insertIndex, channel);
         }
 
+        private bool MatchesCurrentFilter(ChannelWithMessages channel)
+        {
+            return _currentChannelDisplayFilter switch
+            {
+                ChannelDisplayFilter.JoinedOnly => channel.IsMember,
+                ChannelDisplayFilter.NotJoinedOnly => !channel.IsMember,
+                _ => true
+            };
+        }
+
+        private void RefreshDisplayedChannelsFromFilter()
+        {
+            var filteredChannels = _allChannels
+                .Where(MatchesCurrentFilter)
+                .OrderBy(channel => channel, Comparer<ChannelWithMessages>.Create(CompareChannels))
+                .ToList();
+
+            _channelsWithMessages = new ObservableCollection<ChannelWithMessages>(filteredChannels);
+            TimesChannelsItemsControl.ItemsSource = _channelsWithMessages;
+        }
+
         private void MessageRichTextBlock_Loaded(object sender, RoutedEventArgs e)
         {
             if (sender is not RichTextBlock richTextBlock)
@@ -174,6 +204,27 @@ namespace SlackSitter
             }
 
             richTextBlock.Blocks.Add(paragraph);
+        }
+
+        private void MessageAvatarBorder_Loaded(object sender, RoutedEventArgs e)
+        {
+            if (sender is not Border border || border.Tag is not MessageDisplayItem message)
+            {
+                return;
+            }
+
+            if (message.UserAvatarUri == null)
+            {
+                border.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            border.Visibility = Visibility.Visible;
+            border.Background = new ImageBrush
+            {
+                ImageSource = new BitmapImage(message.UserAvatarUri),
+                Stretch = Stretch.UniformToFill
+            };
         }
 
         private async void ShowMessageImageButton_Click(object sender, RoutedEventArgs e)
@@ -418,8 +469,22 @@ namespace SlackSitter
                 try
                 {
                     var messages = await _slackService.GetChannelMessagesAsync(channel.Id, 10).ConfigureAwait(false);
+                    var userImageTasks = messages
+                        .Select(message => message.User)
+                        .Where(userId => !string.IsNullOrWhiteSpace(userId))
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .ToDictionary(userId => userId!, userId => _slackService.GetUserImageUrlAsync(userId));
+
+                    await Task.WhenAll(userImageTasks.Values).ConfigureAwait(false);
+
                     var displayMessages = messages
-                        .Select(message => new MessageDisplayItem(message, channel.Id, workspaceUrl))
+                        .Select(message => new MessageDisplayItem(
+                            message,
+                            channel.Id,
+                            workspaceUrl,
+                            !string.IsNullOrWhiteSpace(message.User) && userImageTasks.TryGetValue(message.User, out var imageTask)
+                                ? imageTask.Result
+                                : null))
                         .ToList();
 
                     return new ChannelWithMessages(channel, displayMessages, workspaceUrl);
@@ -453,6 +518,30 @@ namespace SlackSitter
             dataPackage.SetText(string.Join(Environment.NewLine, _logMessages));
             Clipboard.SetContent(dataPackage);
             AddLog("ログをクリップボードにコピーしました");
+        }
+
+        private void CircleIcon1Button_Click(object sender, RoutedEventArgs e)
+        {
+            _currentChannelDisplayFilter = _currentChannelDisplayFilter == ChannelDisplayFilter.JoinedOnly
+                ? ChannelDisplayFilter.All
+                : ChannelDisplayFilter.JoinedOnly;
+
+            RefreshDisplayedChannelsFromFilter();
+            AddLog(_currentChannelDisplayFilter == ChannelDisplayFilter.JoinedOnly
+                ? "参加中チャンネルのみ表示に切り替えました"
+                : "すべてのチャンネル表示に戻しました");
+        }
+
+        private void CircleIcon2Button_Click(object sender, RoutedEventArgs e)
+        {
+            _currentChannelDisplayFilter = _currentChannelDisplayFilter == ChannelDisplayFilter.NotJoinedOnly
+                ? ChannelDisplayFilter.All
+                : ChannelDisplayFilter.NotJoinedOnly;
+
+            RefreshDisplayedChannelsFromFilter();
+            AddLog(_currentChannelDisplayFilter == ChannelDisplayFilter.NotJoinedOnly
+                ? "未参加チャンネルのみ表示に切り替えました"
+                : "すべてのチャンネル表示に戻しました");
         }
 
         private async void RefreshDataButton_Click(object sender, RoutedEventArgs e)
@@ -568,6 +657,7 @@ namespace SlackSitter
 
             try
             {
+                _allChannels.Clear();
                 _channelsWithMessages.Clear();
                 TimesChannelsItemsControl.ItemsSource = _channelsWithMessages;
 
@@ -598,7 +688,13 @@ namespace SlackSitter
 
                     foreach (var channelWithMessages in batchResults.OrderBy(channel => channel, Comparer<ChannelWithMessages>.Create(CompareChannels)))
                     {
-                        InsertDisplayedChannel(channelWithMessages);
+                        _allChannels.Add(channelWithMessages);
+
+                        if (MatchesCurrentFilter(channelWithMessages))
+                        {
+                            InsertDisplayedChannel(channelWithMessages);
+                        }
+
                         AddLog($"チャンネル #{channelWithMessages.Name}: {channelWithMessages.Messages.Count} 件のメッセージを取得");
                     }
                 }
