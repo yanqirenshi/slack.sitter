@@ -66,6 +66,7 @@ namespace SlackSitter.Services
                     var response = await _client.Conversations.List(
                         cursor: cursor,
                         types: new[] { SlackNet.WebApi.ConversationType.PublicChannel, SlackNet.WebApi.ConversationType.PrivateChannel },
+                        excludeArchived: true,
                         limit: 200
                     );
 
@@ -121,6 +122,7 @@ namespace SlackSitter.Services
                 var response = await _client.Conversations.List(
                     cursor: cursor,
                     types: new[] { SlackNet.WebApi.ConversationType.PublicChannel, SlackNet.WebApi.ConversationType.PrivateChannel },
+                    excludeArchived: true,
                     limit: limit
                 );
 
