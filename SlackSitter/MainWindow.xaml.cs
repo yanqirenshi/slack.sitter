@@ -12,6 +12,7 @@ using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Navigation;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
@@ -23,12 +24,14 @@ namespace SlackSitter
     public sealed partial class MainWindow : Window
     {
         private static readonly Regex SlackLinkRegex = new Regex(@"<(?<url>https?://[^|>]+)(\|(?<label>[^>]+))?>", RegexOptions.Compiled);
+        private static readonly Regex SlackEmojiRegex = new Regex(@":(?<name>[a-zA-Z0-9_+\-]+):", RegexOptions.Compiled);
         private readonly SlackService _slackService;
         private readonly SettingsService _settingsService;
         private string? _currentUserId;
         private string? _currentUserName;
         private ObservableCollection<ChannelWithMessages> _channelsWithMessages;
         private ObservableCollection<string> _logMessages;
+        private Dictionary<string, string> _customEmojiMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
         public MainWindow()
         {
@@ -153,6 +156,32 @@ namespace SlackSitter
 
         private void AppendTextInline(Paragraph paragraph, string text)
         {
+            var currentIndex = 0;
+
+            foreach (Match match in SlackEmojiRegex.Matches(text))
+            {
+                if (match.Index > currentIndex)
+                {
+                    AppendPlainTextInline(paragraph, text.Substring(currentIndex, match.Index - currentIndex));
+                }
+
+                var emojiName = match.Groups["name"].Value;
+                if (!AppendEmojiInline(paragraph, emojiName))
+                {
+                    AppendPlainTextInline(paragraph, match.Value);
+                }
+
+                currentIndex = match.Index + match.Length;
+            }
+
+            if (currentIndex < text.Length)
+            {
+                AppendPlainTextInline(paragraph, text.Substring(currentIndex));
+            }
+        }
+
+        private void AppendPlainTextInline(Paragraph paragraph, string text)
+        {
             var normalizedText = text.Replace("\r\n", "\n").Replace("\r", "\n");
             var lines = normalizedText.Split('\n');
 
@@ -166,6 +195,75 @@ namespace SlackSitter
                 if (i < lines.Length - 1)
                 {
                     paragraph.Inlines.Add(new LineBreak());
+                }
+            }
+        }
+
+        private bool AppendEmojiInline(Paragraph paragraph, string emojiName)
+        {
+            var emojiUrl = ResolveEmojiUrl(emojiName);
+            if (string.IsNullOrEmpty(emojiUrl) || !Uri.TryCreate(emojiUrl, UriKind.Absolute, out var uri))
+            {
+                return false;
+            }
+
+            var image = new Image
+            {
+                Width = 18,
+                Height = 18,
+                Stretch = Stretch.Uniform,
+                Margin = new Thickness(1, 0, 1, -2),
+                Source = new BitmapImage(uri)
+            };
+
+            paragraph.Inlines.Add(new InlineUIContainer { Child = image });
+            return true;
+        }
+
+        private string? ResolveEmojiUrl(string emojiName)
+        {
+            if (!_customEmojiMap.TryGetValue(emojiName, out var emojiValue) || string.IsNullOrWhiteSpace(emojiValue))
+            {
+                return null;
+            }
+
+            var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var currentValue = emojiValue;
+            var currentName = emojiName;
+
+            while (currentValue.StartsWith("alias:", StringComparison.OrdinalIgnoreCase))
+            {
+                if (!visited.Add(currentName))
+                {
+                    return null;
+                }
+
+                currentName = currentValue.Substring("alias:".Length);
+                if (!_customEmojiMap.TryGetValue(currentName, out currentValue) || string.IsNullOrWhiteSpace(currentValue))
+                {
+                    return null;
+                }
+            }
+
+            return currentValue;
+        }
+
+        private async System.Threading.Tasks.Task LoadCustomEmojiAsync()
+        {
+            var result = await _slackService.GetCustomEmojiAsync();
+            _customEmojiMap = result.EmojiMap;
+
+            if (_customEmojiMap.Count > 0)
+            {
+                AddLog($"カスタム絵文字を {_customEmojiMap.Count} 件取得");
+            }
+            else if (!string.IsNullOrWhiteSpace(result.Error))
+            {
+                AddLog($"カスタム絵文字を取得できませんでした: {result.Error}");
+
+                if (result.Error.Contains("missing_scope", StringComparison.OrdinalIgnoreCase))
+                {
+                    AddLog("カスタム絵文字表示には Slack の OAuth Scope に emoji:read が必要です");
                 }
             }
         }
@@ -236,6 +334,7 @@ namespace SlackSitter
 
                 EnvPathText.Text = $".env ファイルの保存先: {_settingsService.GetEnvFilePath()}";
 
+                await LoadCustomEmojiAsync();
                 await LoadUserAvatarAsync();
                 await LoadChannelsAsync();
             }

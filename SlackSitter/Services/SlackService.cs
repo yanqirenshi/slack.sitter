@@ -2,6 +2,9 @@ using SlackNet;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace SlackSitter.Services
@@ -186,6 +189,56 @@ namespace SlackSitter.Services
             {
                 System.Diagnostics.Debug.WriteLine($"Error getting messages for channel {channelId}: {ex.Message}");
                 return new List<SlackNet.Events.MessageEvent>();
+            }
+        }
+
+        public async Task<(Dictionary<string, string> EmojiMap, string? Error)> GetCustomEmojiAsync()
+        {
+            if (string.IsNullOrEmpty(_accessToken))
+            {
+                return (new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase), "アクセストークンが設定されていません");
+            }
+
+            try
+            {
+                using var httpClient = new HttpClient();
+                using var request = new HttpRequestMessage(HttpMethod.Get, "https://slack.com/api/emoji.list");
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _accessToken);
+
+                using var response = await httpClient.SendAsync(request);
+                response.EnsureSuccessStatusCode();
+
+                await using var stream = await response.Content.ReadAsStreamAsync();
+                using var document = await JsonDocument.ParseAsync(stream);
+
+                if (!document.RootElement.TryGetProperty("ok", out var okElement) || !okElement.GetBoolean())
+                {
+                    var error = document.RootElement.TryGetProperty("error", out var errorElement)
+                        ? errorElement.GetString()
+                        : "unknown_error";
+                    return (new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase), error);
+                }
+
+                if (!document.RootElement.TryGetProperty("emoji", out var emojiElement))
+                {
+                    return (new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase), "emoji_not_found");
+                }
+
+                var emojiMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+                foreach (var property in emojiElement.EnumerateObject())
+                {
+                    if (property.Value.ValueKind == JsonValueKind.String)
+                    {
+                        emojiMap[property.Name] = property.Value.GetString() ?? string.Empty;
+                    }
+                }
+
+                return (emojiMap, null);
+            }
+            catch (Exception ex)
+            {
+                return (new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase), ex.Message);
             }
         }
     }

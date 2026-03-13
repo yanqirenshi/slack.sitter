@@ -60,7 +60,7 @@
                             FontFamily="Consolas"
                             Foreground="Gray" />
                         <TextBlock 
-                            Text="   mpim:read, mpim:history, im:read, im:history, users:read, chat:write" 
+                            Text="   mpim:read, mpim:history, im:read, im:history, users:read, chat:write, emoji:read" 
                             TextWrapping="Wrap" 
                             FontSize="11" 
                             FontFamily="Consolas"
@@ -173,7 +173,7 @@
                                                                 Tag="{Binding Text}"
                                                                 Loaded="MessageRichTextBlock_Loaded"
                                                                 TextWrapping="Wrap"
-                                                                FontSize="12" />
+                                                                FontSize="18" />
                                                         </Border>
                                                     </Grid>
                                                 </DataTemplate>
@@ -259,6 +259,9 @@
                             FontFamily="Consolas" />
                         <TextBlock 
                             Text="• chat:write - メッセージの送信" 
+                            FontFamily="Consolas" />
+                        <TextBlock 
+                            Text="• emoji:read - カスタム絵文字の読み取り" 
                             FontFamily="Consolas" />
                         <TextBlock 
                             Text="" />
