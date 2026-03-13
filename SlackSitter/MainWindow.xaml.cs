@@ -391,7 +391,10 @@ namespace SlackSitter
                     foreach (var channel in timesChannelBatch)
                     {
                         var messages = await _slackService.GetChannelMessagesAsync(channel.Id, 10);
-                        var channelWithMessages = new ChannelWithMessages(channel, messages);
+                        var displayMessages = messages
+                            .Select(message => new MessageDisplayItem(message, channel.Id, _slackService.GetWorkspaceUrl()))
+                            .ToList();
+                        var channelWithMessages = new ChannelWithMessages(channel, displayMessages, _slackService.GetWorkspaceUrl());
                         tempChannelsList.Add(channelWithMessages);
 
                         AddLog($"チャンネル #{channel.Name}: {messages.Count} 件のメッセージを取得");

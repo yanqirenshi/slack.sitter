@@ -135,11 +135,16 @@
                                         Background="{Binding IsMember, Converter={StaticResource BooleanToHeaderBrushConverter}}" 
                                         CornerRadius="8,8,0,0" 
                                         Padding="16,12">
-                                        <TextBlock 
-                                            Text="{Binding Name}" 
-                                            FontWeight="Bold" 
-                                            FontSize="16" 
-                                            Foreground="White" />
+                                        <HyperlinkButton
+                                            NavigateUri="{Binding ChannelUri}"
+                                            Padding="0"
+                                            HorizontalAlignment="Left">
+                                            <TextBlock 
+                                                Text="{Binding Name}" 
+                                                FontWeight="Bold" 
+                                                FontSize="16" 
+                                                Foreground="White" />
+                                        </HyperlinkButton>
                                     </Border>
 
                                     <!-- コンテンツエリア -->
@@ -155,13 +160,17 @@
                                                             <RowDefinition Height="Auto" />
                                                             <RowDefinition Height="Auto" />
                                                         </Grid.RowDefinitions>
-                                                        <TextBlock 
+                                                        <HyperlinkButton
                                                             Grid.Row="0"
-                                                            Text="{Binding Ts, Converter={StaticResource TimestampToDateTimeConverter}}" 
-                                                            FontSize="10"
-                                                            Foreground="Gray"
+                                                            NavigateUri="{Binding PermalinkUri}"
+                                                            Padding="0"
                                                             HorizontalAlignment="Right"
-                                                            Margin="0,0,8,2" />
+                                                            Margin="0,0,8,2">
+                                                            <TextBlock 
+                                                                Text="{Binding Ts, Converter={StaticResource TimestampToDateTimeConverter}}" 
+                                                                FontSize="10"
+                                                                Foreground="Gray" />
+                                                        </HyperlinkButton>
                                                         <Border 
                                                             Grid.Row="1"
                                                             Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"

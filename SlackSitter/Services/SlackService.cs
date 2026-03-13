@@ -13,6 +13,7 @@ namespace SlackSitter.Services
     {
         private ISlackApiClient? _client;
         private string? _accessToken;
+        private string? _workspaceUrl;
 
         public bool IsAuthenticated => _client != null && !string.IsNullOrEmpty(_accessToken);
 
@@ -27,6 +28,7 @@ namespace SlackSitter.Services
                     .GetApiClient();
 
                 var authTest = await _client.Auth.Test();
+                _workspaceUrl = authTest.Url;
 
                 if (!string.IsNullOrEmpty(authTest.UserId))
                 {
@@ -35,12 +37,14 @@ namespace SlackSitter.Services
 
                 _client = null;
                 _accessToken = null;
+                _workspaceUrl = null;
                 return false;
             }
             catch
             {
                 _client = null;
                 _accessToken = null;
+                _workspaceUrl = null;
                 return false;
             }
         }
@@ -135,6 +139,11 @@ namespace SlackSitter.Services
         public string? GetAccessToken()
         {
             return _accessToken;
+        }
+
+        public string? GetWorkspaceUrl()
+        {
+            return _workspaceUrl;
         }
 
         public async Task<(string? UserId, string? UserName, string? UserImageUrl)> GetCurrentUserInfoAsync()
