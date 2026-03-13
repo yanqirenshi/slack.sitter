@@ -72,6 +72,29 @@ namespace SlackSitter
             _logMessages.Add($"[{timestamp}] {message}");
         }
 
+        private static double ParseSlackTimestamp(string? timestamp)
+        {
+            return double.TryParse(timestamp, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var value)
+                ? value
+                : double.MinValue;
+        }
+
+        private void RefreshDisplayedChannels(IEnumerable<ChannelWithMessages> channels)
+        {
+            var sortedChannels = channels
+                .OrderByDescending(c => c.IsMember)
+                .ThenByDescending(c => ParseSlackTimestamp(c.LastMessageTs))
+                .ThenBy(c => c.Name)
+                .ToList();
+
+            _channelsWithMessages.Clear();
+
+            foreach (var channel in sortedChannels)
+            {
+                _channelsWithMessages.Add(channel);
+            }
+        }
+
         private void LoadingIndicatorButton_Click(object sender, RoutedEventArgs e)
         {
             if (LogPopupBorder.Visibility == Visibility.Visible)
@@ -165,9 +188,48 @@ namespace SlackSitter
 
             try
             {
-                var channels = await _slackService.GetChannelsAsync();
+                _channelsWithMessages.Clear();
+                TimesChannelsItemsControl.ItemsSource = _channelsWithMessages;
 
-                if (channels.Count == 0)
+                var totalChannelsCount = 0;
+                var totalTimesChannelsCount = 0;
+                var tempChannelsList = new List<ChannelWithMessages>();
+
+                await foreach (var channelBatch in _slackService.GetChannelBatchesAsync(100))
+                {
+                    totalChannelsCount += channelBatch.Count;
+                    AddLog($"チャンネルを {channelBatch.Count} 件取得 (累計: {totalChannelsCount} 件)");
+
+                    var timesChannelBatch = channelBatch
+                        .Where(c => c.Name != null && c.Name.StartsWith("times") && !c.IsArchived)
+                        .ToList();
+
+                    totalTimesChannelsCount += timesChannelBatch.Count;
+
+                    if (timesChannelBatch.Count == 0)
+                    {
+                        continue;
+                    }
+
+                    StatusText.Text = "メッセージを読み込み中...";
+                    StatusPanel.Visibility = Visibility.Collapsed;
+
+                    foreach (var channel in timesChannelBatch)
+                    {
+                        var messages = await _slackService.GetChannelMessagesAsync(channel.Id, 10);
+                        var channelWithMessages = new ChannelWithMessages(channel, messages);
+                        tempChannelsList.Add(channelWithMessages);
+
+                        AddLog($"チャンネル #{channel.Name}: {messages.Count} 件のメッセージを取得");
+                    }
+
+                    RefreshDisplayedChannels(tempChannelsList);
+                }
+
+                AddLog($"取得したチャンネル数: {totalChannelsCount}");
+                AddLog($"#times* チャンネル数: {totalTimesChannelsCount}");
+
+                if (totalChannelsCount == 0)
                 {
                     StatusText.Text = "";
                     ErrorText.Text = "⚠️ チャンネルの取得に失敗しました。トークンの権限を確認してください。";
@@ -179,68 +241,23 @@ namespace SlackSitter
                     LoadingIndicator.BorderBrush = new SolidColorBrush(Microsoft.UI.Colors.Gray);
                     LoadingIcon.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray);
                 }
+                else if (totalTimesChannelsCount > 0)
+                {
+                    AddLog("=== チャンネル情報の取得完了 ===");
+
+                    // データ取得完了 - インジケーターをグレーに変更
+                    LoadingIndicator.BorderBrush = new SolidColorBrush(Microsoft.UI.Colors.Gray);
+                    LoadingIcon.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray);
+                    AddLog("=== チャンネル一覧の取得完了 ===");
+                }
                 else
                 {
-                    // #times* で始まるチャンネルをフィルタリング
-                    var timesChannels = channels
-                        .Where(c => c.Name != null && c.Name.StartsWith("times"))
-                        .OrderByDescending(c => c.IsMember)
-                        .ThenBy(c => c.Name)
-                        .ToList();
+                    StatusText.Text = "⚠️ #times* で始まるチャンネルが見つかりませんでした";
+                    StatusText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Orange);
+                    StatusPanel.Visibility = Visibility.Visible;
 
-                    AddLog($"取得したチャンネル数: {channels.Count}");
-                    AddLog($"#times* チャンネル数: {timesChannels.Count}");
-
-                    if (timesChannels.Count > 0)
-                    {
-                        StatusText.Text = "メッセージを読み込み中...";
-
-                        // ObservableCollectionをクリアして、ItemsSourceに設定
-                        _channelsWithMessages.Clear();
-                        TimesChannelsItemsControl.ItemsSource = _channelsWithMessages;
-                        StatusPanel.Visibility = Visibility.Collapsed;
-
-                        // 一時的なリストにチャンネルとメッセージを格納
-                        var tempChannelsList = new List<ChannelWithMessages>();
-
-                        // 各チャンネルのメッセージを取得
-                        foreach (var channel in timesChannels)
-                        {
-                            var messages = await _slackService.GetChannelMessagesAsync(channel.Id, 10);
-                            var channelWithMessages = new ChannelWithMessages(channel, messages);
-                            tempChannelsList.Add(channelWithMessages);
-
-                            AddLog($"チャンネル #{channel.Name}: {messages.Count} 件のメッセージを取得");
-                        }
-
-                        // IsMemberの降順、次に最後のメッセージのタイムスタンプの降順で並び替え
-                        var sortedChannels = tempChannelsList
-                            .OrderByDescending(c => c.IsMember)
-                            .ThenByDescending(c => c.LastMessageTs)
-                            .ToList();
-
-                        // 並び替えたチャンネルをObservableCollectionに追加
-                        foreach (var channelWithMessages in sortedChannels)
-                        {
-                            _channelsWithMessages.Add(channelWithMessages);
-                        }
-
-                        AddLog("=== チャンネル情報の取得完了 ===");
-
-                        // データ取得完了 - インジケーターをグレーに変更
-                        LoadingIndicator.BorderBrush = new SolidColorBrush(Microsoft.UI.Colors.Gray);
-                        LoadingIcon.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray);
-                    }
-                    else
-                    {
-                        StatusText.Text = "⚠️ #times* で始まるチャンネルが見つかりませんでした";
-                        StatusText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Orange);
-                        StatusPanel.Visibility = Visibility.Visible;
-
-                        // インジケーターをグレーに設定
-                        LoadingIndicator.BorderBrush = new SolidColorBrush(Microsoft.UI.Colors.Gray);
-                        LoadingIcon.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray);
-                    }
+                    LoadingIndicator.BorderBrush = new SolidColorBrush(Microsoft.UI.Colors.Gray);
+                    LoadingIcon.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray);
 
                     AddLog("=== チャンネル一覧の取得完了 ===");
                 }

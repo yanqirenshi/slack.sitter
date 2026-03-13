@@ -100,6 +100,30 @@ namespace SlackSitter.Services
             }
         }
 
+        public async IAsyncEnumerable<List<SlackNet.Conversation>> GetChannelBatchesAsync(int limit = 100)
+        {
+            if (_client == null)
+            {
+                yield break;
+            }
+
+            string? cursor = null;
+
+            do
+            {
+                var response = await _client.Conversations.List(
+                    cursor: cursor,
+                    types: new[] { SlackNet.WebApi.ConversationType.PublicChannel, SlackNet.WebApi.ConversationType.PrivateChannel },
+                    limit: limit
+                );
+
+                yield return response.Channels?.ToList() ?? new List<SlackNet.Conversation>();
+
+                cursor = response.ResponseMetadata?.NextCursor;
+            }
+            while (!string.IsNullOrEmpty(cursor));
+        }
+
         public ISlackApiClient? GetClient()
         {
             return _client;

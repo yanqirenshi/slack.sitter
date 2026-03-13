@@ -149,38 +149,31 @@
                                         <ItemsControl ItemsSource="{Binding Messages}">
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate>
-                                                    <Border 
-                                                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                                                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                                                        BorderThickness="1"
-                                                        CornerRadius="4"
-                                                        Padding="8"
-                                                        Margin="0,4">
-                                                        <StackPanel Spacing="4">
-                                                            <Grid>
-                                                                <Grid.ColumnDefinitions>
-                                                                    <ColumnDefinition Width="*" />
-                                                                    <ColumnDefinition Width="Auto" />
-                                                                </Grid.ColumnDefinitions>
-                                                                <TextBlock 
-                                                                    Grid.Column="0"
-                                                                    Text="{Binding User}" 
-                                                                    FontWeight="SemiBold" 
-                                                                    FontSize="12"
-                                                                    Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
-                                                                <TextBlock 
-                                                                    Grid.Column="1"
-                                                                    Text="{Binding Ts, Converter={StaticResource TimestampToDateTimeConverter}}" 
-                                                                    FontSize="10"
-                                                                    Foreground="Gray"
-                                                                    VerticalAlignment="Center" />
-                                                            </Grid>
+                                                    <Grid Margin="0,8,0,4">
+                                                        <Grid.RowDefinitions>
+                                                            <RowDefinition Height="Auto" />
+                                                            <RowDefinition Height="Auto" />
+                                                        </Grid.RowDefinitions>
+                                                        <TextBlock 
+                                                            Grid.Row="0"
+                                                            Text="{Binding Ts, Converter={StaticResource TimestampToDateTimeConverter}}" 
+                                                            FontSize="10"
+                                                            Foreground="Gray"
+                                                            HorizontalAlignment="Right"
+                                                            Margin="0,0,8,2" />
+                                                        <Border 
+                                                            Grid.Row="1"
+                                                            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                                            BorderThickness="1"
+                                                            CornerRadius="4"
+                                                            Padding="8">
                                                             <TextBlock 
                                                                 Text="{Binding Text}" 
                                                                 TextWrapping="Wrap" 
                                                                 FontSize="12" />
-                                                        </StackPanel>
-                                                    </Border>
+                                                        </Border>
+                                                    </Grid>
                                                 </DataTemplate>
                                             </ItemsControl.ItemTemplate>
                                         </ItemsControl>
