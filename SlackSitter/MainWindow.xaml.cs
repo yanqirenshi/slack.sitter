@@ -4,10 +4,12 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices.WindowsRuntime;
+using System.Text.RegularExpressions;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Data;
+using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Navigation;
@@ -20,6 +22,7 @@ namespace SlackSitter
 {
     public sealed partial class MainWindow : Window
     {
+        private static readonly Regex SlackLinkRegex = new Regex(@"<(?<url>https?://[^|>]+)(\|(?<label>[^>]+))?>", RegexOptions.Compiled);
         private readonly SlackService _slackService;
         private readonly SettingsService _settingsService;
         private string? _currentUserId;
@@ -92,6 +95,78 @@ namespace SlackSitter
             foreach (var channel in sortedChannels)
             {
                 _channelsWithMessages.Add(channel);
+            }
+        }
+
+        private void MessageRichTextBlock_Loaded(object sender, RoutedEventArgs e)
+        {
+            if (sender is not RichTextBlock richTextBlock)
+            {
+                return;
+            }
+
+            var sourceText = richTextBlock.Tag as string ?? string.Empty;
+            richTextBlock.Blocks.Clear();
+
+            var paragraph = new Paragraph();
+            var currentIndex = 0;
+
+            foreach (Match match in SlackLinkRegex.Matches(sourceText))
+            {
+                if (match.Index > currentIndex)
+                {
+                    AppendTextInline(paragraph, sourceText.Substring(currentIndex, match.Index - currentIndex));
+                }
+
+                var url = match.Groups["url"].Value;
+                var label = match.Groups["label"].Success ? match.Groups["label"].Value : url;
+
+                if (Uri.TryCreate(url, UriKind.Absolute, out var uri))
+                {
+                    var hyperlink = new Hyperlink
+                    {
+                        NavigateUri = uri
+                    };
+                    hyperlink.Inlines.Add(new Run { Text = label });
+                    paragraph.Inlines.Add(hyperlink);
+                }
+                else
+                {
+                    AppendTextInline(paragraph, label);
+                }
+
+                currentIndex = match.Index + match.Length;
+            }
+
+            if (currentIndex < sourceText.Length)
+            {
+                AppendTextInline(paragraph, sourceText.Substring(currentIndex));
+            }
+
+            if (paragraph.Inlines.Count == 0)
+            {
+                paragraph.Inlines.Add(new Run { Text = string.Empty });
+            }
+
+            richTextBlock.Blocks.Add(paragraph);
+        }
+
+        private void AppendTextInline(Paragraph paragraph, string text)
+        {
+            var normalizedText = text.Replace("\r\n", "\n").Replace("\r", "\n");
+            var lines = normalizedText.Split('\n');
+
+            for (var i = 0; i < lines.Length; i++)
+            {
+                if (!string.IsNullOrEmpty(lines[i]))
+                {
+                    paragraph.Inlines.Add(new Run { Text = lines[i] });
+                }
+
+                if (i < lines.Length - 1)
+                {
+                    paragraph.Inlines.Add(new LineBreak());
+                }
             }
         }
 
