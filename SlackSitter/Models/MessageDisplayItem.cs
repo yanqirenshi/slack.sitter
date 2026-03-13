@@ -182,14 +182,14 @@ namespace SlackSitter.Models
                 }
 
                 var url = match.Groups["url"].Value;
-                var label = match.Groups["label"].Success ? match.Groups["label"].Value : url;
 
                 if (Uri.TryCreate(url, UriKind.Absolute, out var uri))
                 {
-                    segments.Add(new MessageInlineSegment(MessageInlineSegmentType.Link, label, uri));
+                    segments.Add(new MessageInlineSegment(MessageInlineSegmentType.Link, GetLinkDisplayText(uri), uri));
                 }
                 else
                 {
+                    var label = match.Groups["label"].Success ? match.Groups["label"].Value : url;
                     AddTextAndEmojiSegments(segments, label);
                 }
 
@@ -230,6 +230,11 @@ namespace SlackSitter.Models
             {
                 segments.Add(new MessageInlineSegment(MessageInlineSegmentType.Text, text.Substring(currentIndex)));
             }
+        }
+
+        private static string GetLinkDisplayText(Uri uri)
+        {
+            return string.IsNullOrWhiteSpace(uri.Host) ? uri.ToString() : uri.Host;
         }
 
         private static Uri? CreatePermalinkUri(string? workspaceUrl, string channelId, string? timestamp)
