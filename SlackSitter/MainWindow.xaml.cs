@@ -18,6 +18,7 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Navigation;
+using Microsoft.UI.Text;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
@@ -172,7 +173,7 @@ namespace SlackSitter
                 switch (segment.Type)
                 {
                     case MessageInlineSegmentType.Text:
-                        AppendPlainTextInline(paragraph, segment.Text);
+                        AppendPlainTextInline(paragraph, segment);
                         break;
                     case MessageInlineSegmentType.Link:
                         if (segment.Uri != null)
@@ -181,18 +182,18 @@ namespace SlackSitter
                             {
                                 NavigateUri = segment.Uri
                             };
-                            hyperlink.Inlines.Add(new Run { Text = segment.Text });
+                            hyperlink.Inlines.Add(CreateStyledRun(segment));
                             paragraph.Inlines.Add(hyperlink);
                         }
                         else
                         {
-                            AppendPlainTextInline(paragraph, segment.Text);
+                            AppendPlainTextInline(paragraph, segment);
                         }
                         break;
                     case MessageInlineSegmentType.Emoji:
                         if (!AppendEmojiInline(paragraph, segment.Text))
                         {
-                            AppendPlainTextInline(paragraph, $":{segment.Text}:");
+                            AppendPlainTextInline(paragraph, new MessageInlineSegment(MessageInlineSegmentType.Text, $":{segment.Text}:"));
                         }
                         break;
                 }
@@ -371,16 +372,16 @@ namespace SlackSitter
                 || (int)statusCode == 308;
         }
 
-        private void AppendPlainTextInline(Paragraph paragraph, string text)
+        private void AppendPlainTextInline(Paragraph paragraph, MessageInlineSegment segment)
         {
-            var normalizedText = text.Replace("\r\n", "\n").Replace("\r", "\n");
+            var normalizedText = segment.Text.Replace("\r\n", "\n").Replace("\r", "\n");
             var lines = normalizedText.Split('\n');
 
             for (var i = 0; i < lines.Length; i++)
             {
                 if (!string.IsNullOrEmpty(lines[i]))
                 {
-                    paragraph.Inlines.Add(new Run { Text = lines[i] });
+                    paragraph.Inlines.Add(CreateStyledInline(segment, lines[i]));
                 }
 
                 if (i < lines.Length - 1)
@@ -388,6 +389,63 @@ namespace SlackSitter
                     paragraph.Inlines.Add(new LineBreak());
                 }
             }
+        }
+
+        private static Inline CreateStyledInline(MessageInlineSegment segment, string? textOverride = null)
+        {
+            if (!segment.IsCode)
+            {
+                return CreateStyledRun(segment, textOverride);
+            }
+
+            var textBlock = new TextBlock
+            {
+                Text = textOverride ?? segment.Text,
+                FontFamily = new FontFamily("Consolas"),
+                Padding = new Thickness(4, 1, 4, 1)
+            };
+
+            var border = new Border
+            {
+                Background = new SolidColorBrush(Microsoft.UI.Colors.LightGray),
+                CornerRadius = new CornerRadius(3),
+                Child = textBlock
+            };
+
+            return new InlineUIContainer
+            {
+                Child = border
+            };
+        }
+
+        private static Run CreateStyledRun(MessageInlineSegment segment, string? textOverride = null)
+        {
+            var run = new Run
+            {
+                Text = textOverride ?? segment.Text
+            };
+
+            if (segment.IsBold)
+            {
+                run.FontWeight = FontWeights.Bold;
+            }
+
+            if (segment.IsItalic)
+            {
+                run.FontStyle = Windows.UI.Text.FontStyle.Italic;
+            }
+
+            if (segment.IsStrikethrough)
+            {
+                run.TextDecorations = Windows.UI.Text.TextDecorations.Strikethrough;
+            }
+
+            if (segment.IsCode)
+            {
+                run.FontFamily = new FontFamily("Consolas");
+            }
+
+            return run;
         }
 
         private bool AppendEmojiInline(Paragraph paragraph, string emojiName)

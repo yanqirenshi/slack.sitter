@@ -2,7 +2,9 @@ using SlackNet.Events;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Reflection;
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace SlackSitter.Models
@@ -19,12 +21,27 @@ namespace SlackSitter.Models
         public MessageInlineSegmentType Type { get; }
         public string Text { get; }
         public Uri? Uri { get; }
+        public bool IsBold { get; }
+        public bool IsItalic { get; }
+        public bool IsStrikethrough { get; }
+        public bool IsCode { get; }
 
-        public MessageInlineSegment(MessageInlineSegmentType type, string text, Uri? uri = null)
+        public MessageInlineSegment(
+            MessageInlineSegmentType type,
+            string text,
+            Uri? uri = null,
+            bool isBold = false,
+            bool isItalic = false,
+            bool isStrikethrough = false,
+            bool isCode = false)
         {
             Type = type;
             Text = text;
             Uri = uri;
+            IsBold = isBold;
+            IsItalic = isItalic;
+            IsStrikethrough = isStrikethrough;
+            IsCode = isCode;
         }
     }
 
@@ -171,7 +188,7 @@ namespace SlackSitter.Models
         private static IReadOnlyList<MessageInlineSegment> ParseSegments(string? sourceText)
         {
             var segments = new List<MessageInlineSegment>();
-            var text = sourceText ?? string.Empty;
+            var text = WebUtility.HtmlDecode(sourceText ?? string.Empty);
             var currentIndex = 0;
 
             foreach (Match match in SlackLinkRegex.Matches(text))
@@ -211,25 +228,84 @@ namespace SlackSitter.Models
 
         private static void AddTextAndEmojiSegments(List<MessageInlineSegment> segments, string text)
         {
-            var currentIndex = 0;
+            var buffer = new StringBuilder();
+            var isBold = false;
+            var isItalic = false;
+            var isStrikethrough = false;
+            var isCode = false;
 
-            foreach (Match match in SlackEmojiRegex.Matches(text))
+            for (var index = 0; index < text.Length; index++)
             {
-                if (match.Index > currentIndex)
+                if (!isCode)
                 {
-                    segments.Add(new MessageInlineSegment(
-                        MessageInlineSegmentType.Text,
-                        text.Substring(currentIndex, match.Index - currentIndex)));
+                    var emojiMatch = SlackEmojiRegex.Match(text, index);
+                    if (emojiMatch.Success && emojiMatch.Index == index)
+                    {
+                        FlushTextSegment(segments, buffer, isBold, isItalic, isStrikethrough, isCode);
+                        segments.Add(new MessageInlineSegment(MessageInlineSegmentType.Emoji, emojiMatch.Groups["name"].Value));
+                        index += emojiMatch.Length - 1;
+                        continue;
+                    }
                 }
 
-                segments.Add(new MessageInlineSegment(MessageInlineSegmentType.Emoji, match.Groups["name"].Value));
-                currentIndex = match.Index + match.Length;
+                var currentChar = text[index];
+
+                if (currentChar == '`')
+                {
+                    FlushTextSegment(segments, buffer, isBold, isItalic, isStrikethrough, isCode);
+                    isCode = !isCode;
+                    continue;
+                }
+
+                if (!isCode && currentChar == '*')
+                {
+                    FlushTextSegment(segments, buffer, isBold, isItalic, isStrikethrough, isCode);
+                    isBold = !isBold;
+                    continue;
+                }
+
+                if (!isCode && currentChar == '_')
+                {
+                    FlushTextSegment(segments, buffer, isBold, isItalic, isStrikethrough, isCode);
+                    isItalic = !isItalic;
+                    continue;
+                }
+
+                if (!isCode && currentChar == '~')
+                {
+                    FlushTextSegment(segments, buffer, isBold, isItalic, isStrikethrough, isCode);
+                    isStrikethrough = !isStrikethrough;
+                    continue;
+                }
+
+                buffer.Append(currentChar);
             }
 
-            if (currentIndex < text.Length)
+            FlushTextSegment(segments, buffer, isBold, isItalic, isStrikethrough, isCode);
+        }
+
+        private static void FlushTextSegment(
+            List<MessageInlineSegment> segments,
+            StringBuilder buffer,
+            bool isBold,
+            bool isItalic,
+            bool isStrikethrough,
+            bool isCode)
+        {
+            if (buffer.Length == 0)
             {
-                segments.Add(new MessageInlineSegment(MessageInlineSegmentType.Text, text.Substring(currentIndex)));
+                return;
             }
+
+            segments.Add(new MessageInlineSegment(
+                MessageInlineSegmentType.Text,
+                buffer.ToString(),
+                isBold: isBold,
+                isItalic: isItalic,
+                isStrikethrough: isStrikethrough,
+                isCode: isCode));
+
+            buffer.Clear();
         }
 
         private static string GetLinkDisplayText(Uri uri)
