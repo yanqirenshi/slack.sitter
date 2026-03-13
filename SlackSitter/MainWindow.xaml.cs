@@ -47,7 +47,7 @@ namespace SlackSitter
         private ObservableCollection<string> _logMessages;
         private readonly List<ChannelWithMessages> _allChannels = new List<ChannelWithMessages>();
         private Dictionary<string, string> _customEmojiMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        private ChannelDisplayFilter _currentChannelDisplayFilter = ChannelDisplayFilter.All;
+        private ChannelDisplayFilter _currentChannelDisplayFilter = ChannelDisplayFilter.JoinedOnly;
 
         public MainWindow()
         {
