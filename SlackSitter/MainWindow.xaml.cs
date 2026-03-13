@@ -4,7 +4,8 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices.WindowsRuntime;
-using System.Text.RegularExpressions;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
@@ -23,8 +24,7 @@ namespace SlackSitter
 {
     public sealed partial class MainWindow : Window
     {
-        private static readonly Regex SlackLinkRegex = new Regex(@"<(?<url>https?://[^|>]+)(\|(?<label>[^>]+))?>", RegexOptions.Compiled);
-        private static readonly Regex SlackEmojiRegex = new Regex(@":(?<name>[a-zA-Z0-9_+\-]+):", RegexOptions.Compiled);
+        private const int MaxConcurrentMessageLoads = 4;
         private readonly SlackService _slackService;
         private readonly SettingsService _settingsService;
         private string? _currentUserId;
@@ -85,20 +85,33 @@ namespace SlackSitter
                 : double.MinValue;
         }
 
-        private void RefreshDisplayedChannels(IEnumerable<ChannelWithMessages> channels)
+        private static int CompareChannels(ChannelWithMessages left, ChannelWithMessages right)
         {
-            var sortedChannels = channels
-                .OrderByDescending(c => c.IsMember)
-                .ThenByDescending(c => ParseSlackTimestamp(c.LastMessageTs))
-                .ThenBy(c => c.Name)
-                .ToList();
-
-            _channelsWithMessages.Clear();
-
-            foreach (var channel in sortedChannels)
+            var memberComparison = right.IsMember.CompareTo(left.IsMember);
+            if (memberComparison != 0)
             {
-                _channelsWithMessages.Add(channel);
+                return memberComparison;
             }
+
+            var timestampComparison = ParseSlackTimestamp(right.LastMessageTs).CompareTo(ParseSlackTimestamp(left.LastMessageTs));
+            if (timestampComparison != 0)
+            {
+                return timestampComparison;
+            }
+
+            return string.Compare(left.Name, right.Name, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private void InsertDisplayedChannel(ChannelWithMessages channel)
+        {
+            var insertIndex = 0;
+
+            while (insertIndex < _channelsWithMessages.Count && CompareChannels(_channelsWithMessages[insertIndex], channel) <= 0)
+            {
+                insertIndex++;
+            }
+
+            _channelsWithMessages.Insert(insertIndex, channel);
         }
 
         private void MessageRichTextBlock_Loaded(object sender, RoutedEventArgs e)
@@ -108,42 +121,44 @@ namespace SlackSitter
                 return;
             }
 
-            var sourceText = richTextBlock.Tag as string ?? string.Empty;
+            if (richTextBlock.Tag is not MessageDisplayItem message)
+            {
+                return;
+            }
+
             richTextBlock.Blocks.Clear();
 
             var paragraph = new Paragraph();
-            var currentIndex = 0;
 
-            foreach (Match match in SlackLinkRegex.Matches(sourceText))
+            foreach (var segment in message.Segments)
             {
-                if (match.Index > currentIndex)
+                switch (segment.Type)
                 {
-                    AppendTextInline(paragraph, sourceText.Substring(currentIndex, match.Index - currentIndex));
+                    case MessageInlineSegmentType.Text:
+                        AppendPlainTextInline(paragraph, segment.Text);
+                        break;
+                    case MessageInlineSegmentType.Link:
+                        if (segment.Uri != null)
+                        {
+                            var hyperlink = new Hyperlink
+                            {
+                                NavigateUri = segment.Uri
+                            };
+                            hyperlink.Inlines.Add(new Run { Text = segment.Text });
+                            paragraph.Inlines.Add(hyperlink);
+                        }
+                        else
+                        {
+                            AppendPlainTextInline(paragraph, segment.Text);
+                        }
+                        break;
+                    case MessageInlineSegmentType.Emoji:
+                        if (!AppendEmojiInline(paragraph, segment.Text))
+                        {
+                            AppendPlainTextInline(paragraph, $":{segment.Text}:");
+                        }
+                        break;
                 }
-
-                var url = match.Groups["url"].Value;
-                var label = match.Groups["label"].Success ? match.Groups["label"].Value : url;
-
-                if (Uri.TryCreate(url, UriKind.Absolute, out var uri))
-                {
-                    var hyperlink = new Hyperlink
-                    {
-                        NavigateUri = uri
-                    };
-                    hyperlink.Inlines.Add(new Run { Text = label });
-                    paragraph.Inlines.Add(hyperlink);
-                }
-                else
-                {
-                    AppendTextInline(paragraph, label);
-                }
-
-                currentIndex = match.Index + match.Length;
-            }
-
-            if (currentIndex < sourceText.Length)
-            {
-                AppendTextInline(paragraph, sourceText.Substring(currentIndex));
             }
 
             if (paragraph.Inlines.Count == 0)
@@ -152,32 +167,6 @@ namespace SlackSitter
             }
 
             richTextBlock.Blocks.Add(paragraph);
-        }
-
-        private void AppendTextInline(Paragraph paragraph, string text)
-        {
-            var currentIndex = 0;
-
-            foreach (Match match in SlackEmojiRegex.Matches(text))
-            {
-                if (match.Index > currentIndex)
-                {
-                    AppendPlainTextInline(paragraph, text.Substring(currentIndex, match.Index - currentIndex));
-                }
-
-                var emojiName = match.Groups["name"].Value;
-                if (!AppendEmojiInline(paragraph, emojiName))
-                {
-                    AppendPlainTextInline(paragraph, match.Value);
-                }
-
-                currentIndex = match.Index + match.Length;
-            }
-
-            if (currentIndex < text.Length)
-            {
-                AppendPlainTextInline(paragraph, text.Substring(currentIndex));
-            }
         }
 
         private void AppendPlainTextInline(Paragraph paragraph, string text)
@@ -266,6 +255,32 @@ namespace SlackSitter
                     AddLog("カスタム絵文字表示には Slack の OAuth Scope に emoji:read が必要です");
                 }
             }
+        }
+
+        private async Task<List<ChannelWithMessages>> LoadChannelBatchAsync(IReadOnlyList<SlackNet.Conversation> channels, string? workspaceUrl)
+        {
+            using var semaphore = new SemaphoreSlim(MaxConcurrentMessageLoads);
+
+            var tasks = channels.Select(async channel =>
+            {
+                await semaphore.WaitAsync().ConfigureAwait(false);
+                try
+                {
+                    var messages = await _slackService.GetChannelMessagesAsync(channel.Id, 10).ConfigureAwait(false);
+                    var displayMessages = messages
+                        .Select(message => new MessageDisplayItem(message, channel.Id, workspaceUrl))
+                        .ToList();
+
+                    return new ChannelWithMessages(channel, displayMessages, workspaceUrl);
+                }
+                finally
+                {
+                    semaphore.Release();
+                }
+            }).ToList();
+
+            var batchResults = await Task.WhenAll(tasks);
+            return batchResults.ToList();
         }
 
         private void LoadingIndicatorButton_Click(object sender, RoutedEventArgs e)
@@ -367,7 +382,7 @@ namespace SlackSitter
 
                 var totalChannelsCount = 0;
                 var totalTimesChannelsCount = 0;
-                var tempChannelsList = new List<ChannelWithMessages>();
+                var workspaceUrl = _slackService.GetWorkspaceUrl();
 
                 await foreach (var channelBatch in _slackService.GetChannelBatchesAsync(100))
                 {
@@ -388,19 +403,13 @@ namespace SlackSitter
                     StatusText.Text = "メッセージを読み込み中...";
                     StatusPanel.Visibility = Visibility.Collapsed;
 
-                    foreach (var channel in timesChannelBatch)
+                    var batchResults = await LoadChannelBatchAsync(timesChannelBatch, workspaceUrl);
+
+                    foreach (var channelWithMessages in batchResults.OrderBy(channel => channel, Comparer<ChannelWithMessages>.Create(CompareChannels)))
                     {
-                        var messages = await _slackService.GetChannelMessagesAsync(channel.Id, 10);
-                        var displayMessages = messages
-                            .Select(message => new MessageDisplayItem(message, channel.Id, _slackService.GetWorkspaceUrl()))
-                            .ToList();
-                        var channelWithMessages = new ChannelWithMessages(channel, displayMessages, _slackService.GetWorkspaceUrl());
-                        tempChannelsList.Add(channelWithMessages);
-
-                        AddLog($"チャンネル #{channel.Name}: {messages.Count} 件のメッセージを取得");
+                        InsertDisplayedChannel(channelWithMessages);
+                        AddLog($"チャンネル #{channelWithMessages.Name}: {channelWithMessages.Messages.Count} 件のメッセージを取得");
                     }
-
-                    RefreshDisplayedChannels(tempChannelsList);
                 }
 
                 AddLog($"取得したチャンネル数: {totalChannelsCount}");

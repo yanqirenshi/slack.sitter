@@ -179,7 +179,7 @@
                                                             CornerRadius="4"
                                                             Padding="8">
                                                             <RichTextBlock
-                                                                Tag="{Binding Text}"
+                                                                Tag="{Binding}"
                                                                 Loaded="MessageRichTextBlock_Loaded"
                                                                 TextWrapping="Wrap"
                                                                 FontSize="18" />
