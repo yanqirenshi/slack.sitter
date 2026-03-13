@@ -455,6 +455,38 @@ namespace SlackSitter
             AddLog("ログをクリップボードにコピーしました");
         }
 
+        private async void RefreshDataButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not Button button)
+            {
+                return;
+            }
+
+            if (!_slackService.IsAuthenticated)
+            {
+                AddLog("再取得できません: 未認証です");
+                return;
+            }
+
+            button.IsEnabled = false;
+            var originalContent = button.Content;
+            button.Content = "再取得中...";
+
+            try
+            {
+                AddLog("=== データ再取得開始 ===");
+                await LoadCustomEmojiAsync();
+                await LoadUserAvatarAsync();
+                await LoadChannelsAsync();
+                AddLog("=== データ再取得完了 ===");
+            }
+            finally
+            {
+                button.Content = originalContent;
+                button.IsEnabled = true;
+            }
+        }
+
         private async void LoadSettingsAndAuthenticate()
         {
             var settings = await _settingsService.LoadSettingsAsync();

@@ -465,6 +465,13 @@
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
                         </ScrollViewer>
+
+                        <Button
+                            x:Name="RefreshDataButton"
+                            Content="再取得"
+                            Click="RefreshDataButton_Click"
+                            HorizontalAlignment="Right"
+                            Padding="10,4" />
                     </StackPanel>
                 </Border>
 
