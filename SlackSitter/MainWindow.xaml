@@ -495,7 +495,7 @@
                 HorizontalAlignment="Center" 
                 VerticalAlignment="Bottom" 
                 Margin="-59,0,0,20"
-                Background="Transparent"
+                Background="White"
                 BorderThickness="0"
                 CornerRadius="24"
                 Click="LoadingIndicatorButton_Click"
@@ -505,7 +505,7 @@
                     Height="48" 
                     CornerRadius="24" 
                     x:Name="LoadingIndicator"
-                    Background="{ThemeResource LayerFillColorDefaultBrush}"
+                    Background="White"
                     BorderThickness="2">
                     <FontIcon 
                         x:Name="LoadingIcon"
@@ -524,7 +524,7 @@
                 HorizontalAlignment="Center" 
                 VerticalAlignment="Bottom" 
                 Margin="59,0,0,20"
-                Background="Transparent"
+                Background="White"
                 BorderThickness="0"
                 CornerRadius="24"
                 Click="UserAvatarButton_Click"
@@ -538,6 +538,62 @@
                     <Border.Background>
                         <ImageBrush x:Name="UserAvatarBrush" Stretch="UniformToFill" />
                     </Border.Background>
+                </Border>
+            </Button>
+
+            <Button
+                x:Name="CircleIcon1Button"
+                Width="48"
+                Height="48"
+                Padding="0"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Bottom"
+                Margin="177,0,0,20"
+                Background="White"
+                BorderThickness="0"
+                CornerRadius="24"
+                Visibility="Collapsed">
+                <Border
+                    Width="48"
+                    Height="48"
+                    CornerRadius="24"
+                    BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
+                    BorderThickness="2"
+                    Background="White">
+                    <TextBlock
+                        Text="①"
+                        FontSize="24"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        TextAlignment="Center" />
+                </Border>
+            </Button>
+
+            <Button
+                x:Name="CircleIcon2Button"
+                Width="48"
+                Height="48"
+                Padding="0"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Bottom"
+                Margin="295,0,0,20"
+                Background="White"
+                BorderThickness="0"
+                CornerRadius="24"
+                Visibility="Collapsed">
+                <Border
+                    Width="48"
+                    Height="48"
+                    CornerRadius="24"
+                    BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
+                    BorderThickness="2"
+                    Background="White">
+                    <TextBlock
+                        Text="②"
+                        FontSize="24"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        TextAlignment="Center" />
                 </Border>
             </Button>
         </Grid>

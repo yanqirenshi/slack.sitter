@@ -674,6 +674,8 @@ namespace SlackSitter
                     UserAvatarBrush.ImageSource = bitmap;
                     PopupAvatarBrush.ImageSource = bitmap;
                     UserAvatarButton.Visibility = Visibility.Visible;
+                    CircleIcon1Button.Visibility = Visibility.Visible;
+                    CircleIcon2Button.Visibility = Visibility.Visible;
 
                     PopupUserNameText.Text = userName ?? "Unknown";
                     PopupUserIdText.Text = userId ?? "";
@@ -682,12 +684,16 @@ namespace SlackSitter
                 {
                     System.Diagnostics.Debug.WriteLine("ユーザーアイコンの取得に失敗しました");
                     UserAvatarButton.Visibility = Visibility.Collapsed;
+                    CircleIcon1Button.Visibility = Visibility.Collapsed;
+                    CircleIcon2Button.Visibility = Visibility.Collapsed;
                 }
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"ユーザーアイコンの読み込み中にエラーが発生: {ex.Message}");
                 UserAvatarButton.Visibility = Visibility.Collapsed;
+                CircleIcon1Button.Visibility = Visibility.Collapsed;
+                CircleIcon2Button.Visibility = Visibility.Collapsed;
             }
         }
 
@@ -771,6 +777,8 @@ namespace SlackSitter
             MainPanel.Visibility = Visibility.Collapsed;
             AuthenticationPanel.Visibility = Visibility.Visible;
             UserAvatarButton.Visibility = Visibility.Collapsed;
+            CircleIcon1Button.Visibility = Visibility.Collapsed;
+            CircleIcon2Button.Visibility = Visibility.Collapsed;
             UserPopupBorder.Visibility = Visibility.Collapsed;
         }
     }
