@@ -4,8 +4,11 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices.WindowsRuntime;
+using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
@@ -15,8 +18,10 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Navigation;
+using Windows.ApplicationModel.DataTransfer;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
+using Windows.Storage.Streams;
 using SlackSitter.Services;
 using SlackSitter.Models;
 
@@ -27,6 +32,7 @@ namespace SlackSitter
         private const int MaxConcurrentMessageLoads = 4;
         private readonly SlackService _slackService;
         private readonly SettingsService _settingsService;
+        private readonly HttpClient _httpClient;
         private string? _currentUserId;
         private string? _currentUserName;
         private ObservableCollection<ChannelWithMessages> _channelsWithMessages;
@@ -38,6 +44,7 @@ namespace SlackSitter
             InitializeComponent();
             _slackService = new SlackService();
             _settingsService = new SettingsService();
+            _httpClient = new HttpClient(new HttpClientHandler { AllowAutoRedirect = false });
             _channelsWithMessages = new ObservableCollection<ChannelWithMessages>();
             _logMessages = new ObservableCollection<string>();
             LogItemsControl.ItemsSource = _logMessages;
@@ -169,6 +176,150 @@ namespace SlackSitter
             richTextBlock.Blocks.Add(paragraph);
         }
 
+        private async void ShowMessageImageButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not Button button || button.Tag is not MessageImageItem imageItem)
+            {
+                return;
+            }
+
+            if (button.Parent is not Panel panel)
+            {
+                return;
+            }
+
+            var image = panel.Children.OfType<Image>().FirstOrDefault();
+            if (image == null)
+            {
+                return;
+            }
+
+            if (image.Source != null)
+            {
+                image.Visibility = Visibility.Visible;
+                button.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            try
+            {
+                button.IsEnabled = false;
+                button.Content = "読み込み中...";
+
+                AddLog($"画像読み込み開始: 候補URL数={imageItem.CandidateUrls.Count}");
+
+                DownloadedImageResult? imageResult = null;
+                string? lastError = null;
+
+                foreach (var candidateUrl in imageItem.CandidateUrls)
+                {
+                    try
+                    {
+                        AddLog($"画像候補URLを試行: {candidateUrl}");
+                        var candidateResult = await DownloadSlackImageAsync(candidateUrl);
+                        AddLog($"画像候補URLの応答: FinalUri={candidateResult.FinalUri}, ContentType={candidateResult.ContentType ?? "(unknown)"}");
+                        if (!string.IsNullOrWhiteSpace(candidateResult.ContentType) && candidateResult.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+                        {
+                            imageResult = candidateResult;
+                            break;
+                        }
+
+                        lastError = $"画像ではないレスポンスです: {candidateResult.ContentType ?? "(unknown)"}";
+                    }
+                    catch (Exception ex)
+                    {
+                        lastError = string.IsNullOrWhiteSpace(ex.Message) ? ex.GetType().Name : ex.Message;
+                    }
+                }
+
+                if (imageResult == null)
+                {
+                    throw new InvalidOperationException(lastError ?? "画像の取得候補が見つかりませんでした");
+                }
+
+                var bitmapImage = new BitmapImage();
+                using var randomAccessStream = new InMemoryRandomAccessStream();
+                await randomAccessStream.WriteAsync(imageResult.Bytes.AsBuffer());
+                randomAccessStream.Seek(0);
+                await bitmapImage.SetSourceAsync(randomAccessStream);
+                image.Source = bitmapImage;
+                image.Visibility = Visibility.Visible;
+                button.Visibility = Visibility.Collapsed;
+            }
+            catch (Exception ex)
+            {
+                var errorMessage = string.IsNullOrWhiteSpace(ex.Message) ? ex.GetType().Name : ex.Message;
+                AddLog($"画像の読み込みに失敗しました: {errorMessage}");
+                image.Visibility = Visibility.Collapsed;
+                button.IsEnabled = true;
+                button.Content = "画像";
+            }
+        }
+
+        private sealed class DownloadedImageResult
+        {
+            public byte[] Bytes { get; init; } = Array.Empty<byte>();
+            public string? ContentType { get; init; }
+            public string? FinalUri { get; init; }
+        }
+
+        private async Task<DownloadedImageResult> DownloadSlackImageAsync(string imageUrl)
+        {
+            var accessToken = _slackService.GetAccessToken();
+            var currentUri = new Uri(imageUrl, UriKind.Absolute);
+
+            for (var redirectCount = 0; redirectCount < 5; redirectCount++)
+            {
+                using var request = new HttpRequestMessage(HttpMethod.Get, currentUri);
+
+                if (!string.IsNullOrWhiteSpace(accessToken) && currentUri.Host.Contains("slack", StringComparison.OrdinalIgnoreCase))
+                {
+                    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+                }
+
+                using var response = await _httpClient.SendAsync(request);
+
+                if (IsRedirectStatusCode(response.StatusCode))
+                {
+                    if (response.Headers.Location == null)
+                    {
+                        throw new HttpRequestException($"リダイレクト先がありません: {(int)response.StatusCode} {response.ReasonPhrase}");
+                    }
+
+                    AddLog($"画像取得リダイレクト: {(int)response.StatusCode} {response.ReasonPhrase} -> {response.Headers.Location}");
+
+                    currentUri = response.Headers.Location.IsAbsoluteUri
+                        ? response.Headers.Location
+                        : new Uri(currentUri, response.Headers.Location);
+                    continue;
+                }
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    throw new HttpRequestException($"HTTP {(int)response.StatusCode} {response.ReasonPhrase}");
+                }
+
+                return new DownloadedImageResult
+                {
+                    Bytes = await response.Content.ReadAsByteArrayAsync(),
+                    ContentType = response.Content.Headers.ContentType?.MediaType,
+                    FinalUri = currentUri.ToString()
+                };
+            }
+
+            throw new HttpRequestException("画像取得でリダイレクト回数が上限を超えました");
+        }
+
+        private static bool IsRedirectStatusCode(HttpStatusCode statusCode)
+        {
+            return statusCode == HttpStatusCode.Moved
+                || statusCode == HttpStatusCode.Redirect
+                || statusCode == HttpStatusCode.RedirectMethod
+                || statusCode == HttpStatusCode.RedirectKeepVerb
+                || statusCode == HttpStatusCode.TemporaryRedirect
+                || (int)statusCode == 308;
+        }
+
         private void AppendPlainTextInline(Paragraph paragraph, string text)
         {
             var normalizedText = text.Replace("\r\n", "\n").Replace("\r", "\n");
@@ -294,6 +445,14 @@ namespace SlackSitter
                 LogPopupBorder.Visibility = Visibility.Visible;
                 UserPopupBorder.Visibility = Visibility.Collapsed;
             }
+        }
+
+        private void CopyLogButton_Click(object sender, RoutedEventArgs e)
+        {
+            var dataPackage = new DataPackage();
+            dataPackage.SetText(string.Join(Environment.NewLine, _logMessages));
+            Clipboard.SetContent(dataPackage);
+            AddLog("ログをクリップボードにコピーしました");
         }
 
         private async void LoadSettingsAndAuthenticate()

@@ -178,11 +178,31 @@
                                                             BorderThickness="1"
                                                             CornerRadius="4"
                                                             Padding="8">
-                                                            <RichTextBlock
-                                                                Tag="{Binding}"
-                                                                Loaded="MessageRichTextBlock_Loaded"
-                                                                TextWrapping="Wrap"
-                                                                FontSize="18" />
+                                                            <StackPanel Spacing="8">
+                                                                <RichTextBlock
+                                                                    Tag="{Binding}"
+                                                                    Loaded="MessageRichTextBlock_Loaded"
+                                                                    TextWrapping="Wrap"
+                                                                    FontSize="18" />
+                                                                <ItemsControl ItemsSource="{Binding Images}">
+                                                                    <ItemsControl.ItemTemplate>
+                                                                        <DataTemplate>
+                                                                            <StackPanel Spacing="8">
+                                                                                <Button
+                                                                                    Content="画像"
+                                                                                    Tag="{Binding}"
+                                                                                    Click="ShowMessageImageButton_Click"
+                                                                                    HorizontalAlignment="Left" />
+                                                                                <Image
+                                                                                    Tag="{Binding}"
+                                                                                    Visibility="Collapsed"
+                                                                                    MaxHeight="240"
+                                                                                    Stretch="Uniform" />
+                                                                            </StackPanel>
+                                                                        </DataTemplate>
+                                                                    </ItemsControl.ItemTemplate>
+                                                                </ItemsControl>
+                                                            </StackPanel>
                                                         </Border>
                                                     </Grid>
                                                 </DataTemplate>
@@ -405,10 +425,24 @@
                     MaxWidth="600"
                     Margin="0,0,0,15">
                     <StackPanel Spacing="12">
-                        <TextBlock 
-                            Text="データ取得ログ" 
-                            FontWeight="SemiBold" 
-                            FontSize="14" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock 
+                                Grid.Column="0"
+                                Text="データ取得ログ" 
+                                FontWeight="SemiBold" 
+                                FontSize="14"
+                                VerticalAlignment="Center" />
+                            <Button
+                                Grid.Column="1"
+                                Content="ログをすべてコピー"
+                                Click="CopyLogButton_Click"
+                                Padding="10,4"
+                                HorizontalAlignment="Right" />
+                        </Grid>
 
                         <Border 
                             Height="1" 
