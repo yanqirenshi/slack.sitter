@@ -45,6 +45,18 @@ namespace SlackSitter.Models
         }
     }
 
+    public sealed class MessageReactionItem
+    {
+        public string Name { get; }
+        public int Count { get; }
+
+        public MessageReactionItem(string name, int count)
+        {
+            Name = name;
+            Count = count;
+        }
+    }
+
     public sealed class MessageImageItem
     {
         public IReadOnlyList<string> CandidateUrls { get; }
@@ -70,6 +82,7 @@ namespace SlackSitter.Models
         public Uri? PermalinkUri { get; }
         public IReadOnlyList<MessageInlineSegment> Segments { get; }
         public IReadOnlyList<MessageImageItem> Images { get; }
+        public IReadOnlyList<MessageReactionItem> Reactions { get; }
 
         public MessageDisplayItem(MessageEvent message, string channelId, string? workspaceUrl, string? userAvatarUrl = null)
         {
@@ -80,6 +93,7 @@ namespace SlackSitter.Models
             PermalinkUri = CreatePermalinkUri(workspaceUrl, channelId, message.Ts);
             Segments = ParseSegments(message.Text);
             Images = ExtractImages(message);
+            Reactions = ExtractReactions(message);
         }
 
         private static Uri? CreateUri(string? uriText)
@@ -125,6 +139,39 @@ namespace SlackSitter.Models
             return images
                 .Where(image => image.CandidateUrls.Count > 0)
                 .ToList();
+        }
+
+        private static IReadOnlyList<MessageReactionItem> ExtractReactions(MessageEvent message)
+        {
+            var reactions = new List<MessageReactionItem>();
+
+            foreach (var reaction in GetEnumerablePropertyValue(message, "Reactions"))
+            {
+                var name = GetStringPropertyValue(reaction, "Name");
+                if (string.IsNullOrWhiteSpace(name))
+                {
+                    continue;
+                }
+
+                var countValue = GetPropertyValue(reaction, "Count");
+                var count = 0;
+
+                if (countValue != null)
+                {
+                    try
+                    {
+                        count = Convert.ToInt32(countValue);
+                    }
+                    catch
+                    {
+                        count = 0;
+                    }
+                }
+
+                reactions.Add(new MessageReactionItem(name, count));
+            }
+
+            return reactions;
         }
 
         private static void AddImageItemsFromObjects(List<MessageImageItem> images, IEnumerable<object> objects)
