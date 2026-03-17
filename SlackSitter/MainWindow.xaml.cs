@@ -975,7 +975,9 @@ namespace SlackSitter
                         Stretch = Stretch.UniformToFill
                     };
                     UserPopupBorder.SetAvatarImage(bitmap);
+                    GearIconButton.Visibility = Visibility.Visible;
                     UserAvatarButton.Visibility = Visibility.Visible;
+                    PlusIconButton.Visibility = Visibility.Visible;
                     CircleIcon1Button.Visibility = Visibility.Visible;
                     CircleIcon2Button.Visibility = Visibility.Visible;
 
@@ -985,7 +987,9 @@ namespace SlackSitter
                 else
                 {
                     System.Diagnostics.Debug.WriteLine("ユーザーアイコンの取得に失敗しました");
+                    GearIconButton.Visibility = Visibility.Collapsed;
                     UserAvatarButton.Visibility = Visibility.Collapsed;
+                    PlusIconButton.Visibility = Visibility.Collapsed;
                     CircleIcon1Button.Visibility = Visibility.Collapsed;
                     CircleIcon2Button.Visibility = Visibility.Collapsed;
                 }
@@ -993,10 +997,22 @@ namespace SlackSitter
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"ユーザーアイコンの読み込み中にエラーが発生: {ex.Message}");
+                GearIconButton.Visibility = Visibility.Collapsed;
                 UserAvatarButton.Visibility = Visibility.Collapsed;
+                PlusIconButton.Visibility = Visibility.Collapsed;
                 CircleIcon1Button.Visibility = Visibility.Collapsed;
                 CircleIcon2Button.Visibility = Visibility.Collapsed;
             }
+        }
+
+        private void GearIconButton_Click(object sender, RoutedEventArgs e)
+        {
+            AddLog("歯車ボタンは未実装です");
+        }
+
+        private void PlusIconButton_Click(object sender, RoutedEventArgs e)
+        {
+            AddLog("+ ボタンは未実装です");
         }
 
         private void UserAvatarButton_Click(object sender, RoutedEventArgs e)
@@ -1061,7 +1077,9 @@ namespace SlackSitter
 
             MainPanel.Visibility = Visibility.Collapsed;
             AuthenticationPanel.Visibility = Visibility.Visible;
+            GearIconButton.Visibility = Visibility.Collapsed;
             UserAvatarButton.Visibility = Visibility.Collapsed;
+            PlusIconButton.Visibility = Visibility.Collapsed;
             CircleIcon1Button.Visibility = Visibility.Collapsed;
             CircleIcon2Button.Visibility = Visibility.Collapsed;
             UserPopupBorder.Visibility = Visibility.Collapsed;
