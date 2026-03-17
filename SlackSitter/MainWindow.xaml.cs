@@ -68,6 +68,7 @@ namespace SlackSitter
             _channelsWithMessages = new ObservableCollection<ChannelWithMessages>();
             _logMessages = new ObservableCollection<string>();
             LogPopupBorder.SetLogItemsSource(_logMessages);
+            UpdateChannelFilterButtonState();
             UpdateAutoRefreshTimerState();
 
             AddLog($".env file path: {_settingsService.GetEnvFilePath()}");
@@ -744,6 +745,26 @@ namespace SlackSitter
             AddLog(_isAutoRefreshEnabled ? "自動更新を再開しました" : "自動更新を停止しました");
         }
 
+        private void UpdateChannelFilterButtonState()
+        {
+            var accentBrush = GetThemeBrush("AccentFillColorDefaultBrush", new SolidColorBrush(Microsoft.UI.Colors.Blue));
+            var primaryTextBrush = GetThemeBrush("TextFillColorPrimaryBrush", new SolidColorBrush(Microsoft.UI.Colors.Black));
+            var selectedBrush = new SolidColorBrush(Microsoft.UI.Colors.Red);
+
+            CircleIcon1Button.InnerBorderBrush = _currentChannelDisplayFilter == ChannelDisplayFilter.JoinedOnly ? selectedBrush : accentBrush;
+            CircleIcon1Button.ContentForeground = _currentChannelDisplayFilter == ChannelDisplayFilter.JoinedOnly ? selectedBrush : primaryTextBrush;
+
+            CircleIcon2Button.InnerBorderBrush = _currentChannelDisplayFilter == ChannelDisplayFilter.NotJoinedOnly ? selectedBrush : accentBrush;
+            CircleIcon2Button.ContentForeground = _currentChannelDisplayFilter == ChannelDisplayFilter.NotJoinedOnly ? selectedBrush : primaryTextBrush;
+        }
+
+        private static Brush GetThemeBrush(string resourceKey, Brush fallback)
+        {
+            return Application.Current.Resources.TryGetValue(resourceKey, out var resource) && resource is Brush brush
+                ? brush
+                : fallback;
+        }
+
         private void CircleIcon1Button_Click(object sender, RoutedEventArgs e)
         {
             _currentChannelDisplayFilter = _currentChannelDisplayFilter == ChannelDisplayFilter.JoinedOnly
@@ -751,6 +772,7 @@ namespace SlackSitter
                 : ChannelDisplayFilter.JoinedOnly;
 
             RefreshDisplayedChannelsFromFilter();
+            UpdateChannelFilterButtonState();
             AddLog(_currentChannelDisplayFilter == ChannelDisplayFilter.JoinedOnly
                 ? "参加中チャンネルのみ表示に切り替えました"
                 : "すべてのチャンネル表示に戻しました");
@@ -763,6 +785,7 @@ namespace SlackSitter
                 : ChannelDisplayFilter.NotJoinedOnly;
 
             RefreshDisplayedChannelsFromFilter();
+            UpdateChannelFilterButtonState();
             AddLog(_currentChannelDisplayFilter == ChannelDisplayFilter.NotJoinedOnly
                 ? "未参加チャンネルのみ表示に切り替えました"
                 : "すべてのチャンネル表示に戻しました");
