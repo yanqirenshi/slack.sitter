@@ -859,11 +859,7 @@ namespace SlackSitter
             // データ取得中インジケーターを赤色に設定
             MainController.ShowLoadingIndicatorBusy();
 
-            StatusText.Text = "チャンネル一覧を読み込み中...";
-            StatusText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray);
-            ErrorText.Visibility = Visibility.Collapsed;
-            RequiredScopesPanel.Visibility = Visibility.Collapsed;
-            StatusPanel.Visibility = Visibility.Visible;
+            StatusPanel.ShowLoadingMessage("チャンネル一覧を読み込み中...");
 
             try
             {
@@ -891,8 +887,7 @@ namespace SlackSitter
                         continue;
                     }
 
-                    StatusText.Text = "メッセージを読み込み中...";
-                    StatusPanel.Visibility = Visibility.Collapsed;
+                    StatusPanel.HidePanel();
 
                     var batchResults = await LoadChannelBatchAsync(timesChannelBatch, workspaceUrl);
 
@@ -914,10 +909,7 @@ namespace SlackSitter
 
                 if (totalChannelsCount == 0)
                 {
-                    StatusText.Text = "";
-                    ErrorText.Text = "⚠️ チャンネルの取得に失敗しました。トークンの権限を確認してください。";
-                    ErrorText.Visibility = Visibility.Visible;
-                    RequiredScopesPanel.Visibility = Visibility.Visible;
+                    StatusPanel.ShowErrorMessage("⚠️ チャンネルの取得に失敗しました。トークンの権限を確認してください。", true);
                     AddLog("チャンネルが取得できませんでした。権限を確認してください。");
 
                     // インジケーターをグレーに設定
@@ -933,9 +925,7 @@ namespace SlackSitter
                 }
                 else
                 {
-                    StatusText.Text = "⚠️ #times* で始まるチャンネルが見つかりませんでした";
-                    StatusText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Orange);
-                    StatusPanel.Visibility = Visibility.Visible;
+                    StatusPanel.ShowWarningMessage("⚠️ #times* で始まるチャンネルが見つかりませんでした", new SolidColorBrush(Microsoft.UI.Colors.Orange));
 
                     MainController.SetLoadingIndicatorIdle();
 
@@ -945,14 +935,9 @@ namespace SlackSitter
             catch (Exception ex)
             {
                 AddLog($"チャンネル取得中にエラーが発生: {ex.Message}");
-                StatusText.Text = "";
-                ErrorText.Text = $"⚠️ エラーが発生しました: {ex.Message}";
-                ErrorText.Visibility = Visibility.Visible;
-
-                if (ex.Message.Contains("missing_scope") || ex.Message.Contains("権限"))
-                {
-                    RequiredScopesPanel.Visibility = Visibility.Visible;
-                }
+                StatusPanel.ShowErrorMessage(
+                    $"⚠️ エラーが発生しました: {ex.Message}",
+                    ex.Message.Contains("missing_scope") || ex.Message.Contains("権限"));
 
                 // エラー時はインジケーターをグレーに設定
                 MainController.SetLoadingIndicatorIdle();

@@ -16,6 +16,7 @@
   <ItemGroup>
     <Page Remove="Views\MainControllerView.xaml" />
     <Page Remove="Views\PopupBubbleView.xaml" />
+    <Page Remove="Views\StatusPanelView.xaml" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="Assets\SplashScreen.scale-200.png" />
@@ -46,6 +47,10 @@
     <PackageReference Include="SlackNet" Version="0.17.9" />
   </ItemGroup>
   <ItemGroup>
+    <Page Include="Views\StatusPanelView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
     <Page Include="Views\MainControllerView.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -56,10 +61,16 @@
     </Page>
   </ItemGroup>
   <ItemGroup>
+    <None Update="Views\StatusPanelView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </None>
     <None Update="Views\MainControllerView.xaml">
       <Generator>MSBuild:Compile</Generator>
     </None>
     <None Update="Views\PopupBubbleView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </None>
+    <None Update="Views\StatusPanelView.xaml">
       <Generator>MSBuild:Compile</Generator>
     </None>
   </ItemGroup>
