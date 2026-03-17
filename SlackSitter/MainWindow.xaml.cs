@@ -25,6 +25,7 @@ using Windows.Foundation.Collections;
 using Windows.Storage.Streams;
 using SlackSitter.Services;
 using SlackSitter.Models;
+using SlackSitter.Views;
 
 namespace SlackSitter
 {
@@ -66,7 +67,7 @@ namespace SlackSitter
             _autoRefreshTimer.Tick += AutoRefreshTimer_Tick;
             _channelsWithMessages = new ObservableCollection<ChannelWithMessages>();
             _logMessages = new ObservableCollection<string>();
-            LogItemsControl.ItemsSource = _logMessages;
+            LogPopupBorder.SetLogItemsSource(_logMessages);
             UpdateAutoRefreshTimerState();
 
             AddLog($".env file path: {_settingsService.GetEnvFilePath()}");
@@ -89,9 +90,9 @@ namespace SlackSitter
                         var container = TimesChannelsItemsControl.ContainerFromIndex(i);
                         if (container != null)
                         {
-                            if (VisualTreeHelper.GetChild(container, 0) is Border border)
+                            if (VisualTreeHelper.GetChild(container, 0) is FrameworkElement element)
                             {
-                                border.Height = availableHeight;
+                                element.Height = availableHeight;
                             }
                         }
                     }
@@ -217,6 +218,11 @@ namespace SlackSitter
             richTextBlock.Blocks.Add(paragraph);
         }
 
+        private void MessageItemView_MessageRichTextBlockLoadedRequested(MessageItemView sender, RichTextBlock richTextBlock)
+        {
+            MessageRichTextBlock_Loaded(richTextBlock, new RoutedEventArgs());
+        }
+
         private void MessageAvatarBorder_Loaded(object sender, RoutedEventArgs e)
         {
             if (sender is not Border border || border.Tag is not MessageDisplayItem message)
@@ -236,6 +242,11 @@ namespace SlackSitter
                 ImageSource = new BitmapImage(message.UserAvatarUri),
                 Stretch = Stretch.UniformToFill
             };
+        }
+
+        private void MessageItemView_MessageAvatarBorderLoadedRequested(MessageItemView sender, Border border)
+        {
+            MessageAvatarBorder_Loaded(border, new RoutedEventArgs());
         }
 
         private void ReactionBorder_Loaded(object sender, RoutedEventArgs e)
@@ -281,6 +292,11 @@ namespace SlackSitter
             });
 
             border.Child = content;
+        }
+
+        private void MessageItemView_ReactionBorderLoadedRequested(MessageItemView sender, Border border)
+        {
+            ReactionBorder_Loaded(border, new RoutedEventArgs());
         }
 
         private async void ShowMessageImageButton_Click(object sender, RoutedEventArgs e)
@@ -361,6 +377,31 @@ namespace SlackSitter
                 button.IsEnabled = true;
                 button.Content = "画像";
             }
+        }
+
+        private void MessageItemView_ShowImageRequested(MessageItemView sender, Button button)
+        {
+            ShowMessageImageButton_Click(button, new RoutedEventArgs());
+        }
+
+        private void ChannelCardView_MessageRichTextBlockLoadedRequested(ChannelCardView sender, RichTextBlock richTextBlock)
+        {
+            MessageRichTextBlock_Loaded(richTextBlock, new RoutedEventArgs());
+        }
+
+        private void ChannelCardView_MessageAvatarBorderLoadedRequested(ChannelCardView sender, Border border)
+        {
+            MessageAvatarBorder_Loaded(border, new RoutedEventArgs());
+        }
+
+        private void ChannelCardView_ReactionBorderLoadedRequested(ChannelCardView sender, Border border)
+        {
+            ReactionBorder_Loaded(border, new RoutedEventArgs());
+        }
+
+        private void ChannelCardView_ShowImageRequested(ChannelCardView sender, Button button)
+        {
+            ShowMessageImageButton_Click(button, new RoutedEventArgs());
         }
 
         private sealed class DownloadedImageResult
@@ -625,7 +666,7 @@ namespace SlackSitter
             }
         }
 
-        private void CopyLogButton_Click(object sender, RoutedEventArgs e)
+        private void LogPopupView_CopyLogRequested(object sender, RoutedEventArgs e)
         {
             var dataPackage = new DataPackage();
             dataPackage.SetText(string.Join(Environment.NewLine, _logMessages));
@@ -645,14 +686,10 @@ namespace SlackSitter
                 _autoRefreshTimer.Stop();
             }
 
-            if (AutoRefreshToggleButton != null)
+            if (UserPopupBorder != null)
             {
-                AutoRefreshToggleButton.Content = _isAutoRefreshEnabled ? "自動更新を停止" : "自動更新を再開";
-            }
-
-            if (PopupAutoRefreshStatusText != null)
-            {
-                PopupAutoRefreshStatusText.Text = _isAutoRefreshEnabled
+                UserPopupBorder.AutoRefreshButtonText = _isAutoRefreshEnabled ? "自動更新を停止" : "自動更新を再開";
+                UserPopupBorder.AutoRefreshStatusText = _isAutoRefreshEnabled
                     ? $"自動更新: 有効 ({(int)AutoRefreshInterval.TotalMinutes}分ごと)"
                     : "自動更新: 停止中";
             }
@@ -700,7 +737,7 @@ namespace SlackSitter
             await RefreshWorkspaceDataAsync("=== 自動データ再取得開始 ===", "=== 自動データ再取得完了 ===");
         }
 
-        private void AutoRefreshToggleButton_Click(object sender, RoutedEventArgs e)
+        private void UserPopupView_AutoRefreshToggleRequested(object sender, RoutedEventArgs e)
         {
             _isAutoRefreshEnabled = !_isAutoRefreshEnabled;
             UpdateAutoRefreshTimerState();
@@ -731,9 +768,9 @@ namespace SlackSitter
                 : "すべてのチャンネル表示に戻しました");
         }
 
-        private async void RefreshDataButton_Click(object sender, RoutedEventArgs e)
+        private async void LogPopupView_RefreshRequested(object sender, RoutedEventArgs e)
         {
-            if (sender is not Button button)
+            if (sender is not LogPopupView logPopupView)
             {
                 return;
             }
@@ -744,9 +781,7 @@ namespace SlackSitter
                 return;
             }
 
-            button.IsEnabled = false;
-            var originalContent = button.Content;
-            button.Content = "再取得中...";
+            logPopupView.SetRefreshBusy(true);
 
             try
             {
@@ -754,8 +789,7 @@ namespace SlackSitter
             }
             finally
             {
-                button.Content = originalContent;
-                button.IsEnabled = true;
+                logPopupView.SetRefreshBusy(false);
             }
         }
 
@@ -765,7 +799,7 @@ namespace SlackSitter
 
             if (!string.IsNullOrEmpty(settings.AccessToken))
             {
-                AccessTokenPasswordBox.Password = settings.AccessToken;
+                AuthenticationPanel.SetToken(settings.AccessToken);
                 await AuthenticateWithToken(settings.AccessToken);
             }
             else
@@ -774,24 +808,10 @@ namespace SlackSitter
             }
         }
 
-        private async void AuthenticateButton_Click(object sender, RoutedEventArgs e)
+        private async void AuthenticationView_AuthenticateRequested(AuthenticationView sender, string accessToken)
         {
-            var accessToken = AccessTokenPasswordBox.Password;
-
-            if (string.IsNullOrWhiteSpace(accessToken))
-            {
-                AuthenticationStatusText.Text = "User OAuth Token を入力してください";
-                AuthenticationStatusText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Red);
-                return;
-            }
-
-            AuthenticateButton.IsEnabled = false;
-            AuthenticationStatusText.Text = "認証中...";
-            AuthenticationStatusText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray);
-
             await AuthenticateWithToken(accessToken);
-
-            AuthenticateButton.IsEnabled = true;
+            sender.SetBusy(false);
         }
 
         private async System.Threading.Tasks.Task AuthenticateWithToken(string accessToken)
@@ -807,17 +827,17 @@ namespace SlackSitter
                 await _settingsService.SaveSettingsAsync(settings);
 
                 AuthenticationPanel.Visibility = Visibility.Collapsed;
+                AuthenticationPanel.StatusMessage = string.Empty;
                 MainPanel.Visibility = Visibility.Visible;
-                AuthenticationStatusText.Text = string.Empty;
 
-                EnvPathText.Text = $".env ファイルの保存先: {_settingsService.GetEnvFilePath()}";
+                UserPopupBorder.EnvironmentPathText = $".env ファイルの保存先: {_settingsService.GetEnvFilePath()}";
 
                 await RefreshWorkspaceDataAsync();
             }
             else
             {
-                AuthenticationStatusText.Text = "認証に失敗しました。トークンを確認してください。";
-                AuthenticationStatusText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Red);
+                AuthenticationPanel.StatusMessage = "認証に失敗しました。トークンを確認してください。";
+                AuthenticationPanel.StatusBrush = new SolidColorBrush(Microsoft.UI.Colors.Red);
                 UpdateAutoRefreshTimerState();
             }
         }
@@ -950,13 +970,13 @@ namespace SlackSitter
 
                     var bitmap = new Microsoft.UI.Xaml.Media.Imaging.BitmapImage(new Uri(userImageUrl));
                     UserAvatarBrush.ImageSource = bitmap;
-                    PopupAvatarBrush.ImageSource = bitmap;
+                    UserPopupBorder.SetAvatarImage(bitmap);
                     UserAvatarButton.Visibility = Visibility.Visible;
                     CircleIcon1Button.Visibility = Visibility.Visible;
                     CircleIcon2Button.Visibility = Visibility.Visible;
 
-                    PopupUserNameText.Text = userName ?? "Unknown";
-                    PopupUserIdText.Text = userId ?? "";
+                    UserPopupBorder.UserNameText = userName ?? "Unknown";
+                    UserPopupBorder.UserIdText = userId ?? string.Empty;
                 }
                 else
                 {
@@ -988,29 +1008,14 @@ namespace SlackSitter
             }
         }
 
-        private async void PopupLogoutButton_Click(object sender, RoutedEventArgs e)
+        private async void UserPopupView_LogoutRequested(object sender, RoutedEventArgs e)
         {
             UserPopupBorder.Visibility = Visibility.Collapsed;
             await LogoutAsync();
         }
 
-        private async void PopupUpdateTokenButton_Click(object sender, RoutedEventArgs e)
+        private async void UserPopupView_UpdateTokenRequested(UserPopupView sender, string newAccessToken)
         {
-            var newAccessToken = PopupAccessTokenPasswordBox.Password;
-
-            if (string.IsNullOrWhiteSpace(newAccessToken))
-            {
-                PopupTokenStatusText.Text = "トークンを入力してください";
-                PopupTokenStatusText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Red);
-                PopupTokenStatusText.Visibility = Visibility.Visible;
-                return;
-            }
-
-            PopupUpdateTokenButton.IsEnabled = false;
-            PopupTokenStatusText.Text = "認証中...";
-            PopupTokenStatusText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray);
-            PopupTokenStatusText.Visibility = Visibility.Visible;
-
             var success = await _slackService.AuthenticateAsync(newAccessToken);
 
             if (success)
@@ -1021,24 +1026,22 @@ namespace SlackSitter
                 };
                 await _settingsService.SaveSettingsAsync(settings);
 
-                PopupTokenStatusText.Text = "✅ トークンを更新しました";
-                PopupTokenStatusText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Green);
-                PopupAccessTokenPasswordBox.Password = string.Empty;
+                sender.ShowTokenStatus("✅ トークンを更新しました", new SolidColorBrush(Microsoft.UI.Colors.Green));
+                sender.ClearPendingAccessToken();
 
                 await RefreshWorkspaceDataAsync("=== データ再取得開始 ===", "=== データ再取得完了 ===");
 
                 await System.Threading.Tasks.Task.Delay(2000);
-                PopupTokenStatusText.Visibility = Visibility.Collapsed;
+                sender.HideTokenStatus();
                 UserPopupBorder.Visibility = Visibility.Collapsed;
             }
             else
             {
-                PopupTokenStatusText.Text = "❌ 認証に失敗しました";
-                PopupTokenStatusText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Red);
+                sender.ShowTokenStatus("❌ 認証に失敗しました", new SolidColorBrush(Microsoft.UI.Colors.Red));
                 UpdateAutoRefreshTimerState();
             }
 
-            PopupUpdateTokenButton.IsEnabled = true;
+            sender.SetUpdateTokenBusy(false);
         }
 
         private async System.Threading.Tasks.Task LogoutAsync()
@@ -1049,8 +1052,8 @@ namespace SlackSitter
             };
             await _settingsService.SaveSettingsAsync(settings);
 
-            AccessTokenPasswordBox.Password = string.Empty;
-            AuthenticationStatusText.Text = string.Empty;
+            AuthenticationPanel.ResetStatus();
+            UserPopupBorder.Reset();
 
             MainPanel.Visibility = Visibility.Collapsed;
             AuthenticationPanel.Visibility = Visibility.Visible;

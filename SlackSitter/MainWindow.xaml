@@ -5,6 +5,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:local="using:SlackSitter"
     xmlns:converters="using:SlackSitter.Converters"
+    xmlns:views="using:SlackSitter.Views"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
@@ -20,85 +21,10 @@
             <converters:BooleanToHeaderBrushConverter x:Key="BooleanToHeaderBrushConverter" />
             <converters:SlackMessageTextConverter x:Key="SlackMessageTextConverter" />
         </Grid.Resources>
-        <Grid x:Name="AuthenticationPanel" Visibility="Collapsed">
-            <StackPanel 
-                HorizontalAlignment="Center" 
-                VerticalAlignment="Center" 
-                Width="500" 
-                Spacing="12">
-                <TextBlock 
-                    Text="Slack 認証" 
-                    FontSize="24" 
-                    FontWeight="Bold" 
-                    HorizontalAlignment="Center" 
-                    Margin="0,0,0,12" />
-
-                <Border 
-                    Background="White" 
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" 
-                    BorderThickness="1" 
-                    CornerRadius="8" 
-                    Padding="12"
-                    Margin="0,0,0,12">
-                    <StackPanel Spacing="8">
-                        <TextBlock 
-                            Text="💡 トークンの生成方法" 
-                            FontWeight="SemiBold" 
-                            FontSize="14" />
-                        <TextBlock 
-                            Text="1. Slack App の設定ページを開く" 
-                            TextWrapping="Wrap" 
-                            FontSize="12" />
-                        <TextBlock 
-                            Text="2. OAuth &amp; Permissions → Scopes → User Token Scopes に以下を追加:" 
-                            TextWrapping="Wrap" 
-                            FontSize="12" />
-                        <TextBlock 
-                            Text="   channels:read, channels:history, groups:read, groups:history," 
-                            TextWrapping="Wrap" 
-                            FontSize="11" 
-                            FontFamily="Consolas"
-                            Foreground="Gray" />
-                        <TextBlock 
-                            Text="   mpim:read, mpim:history, im:read, im:history, users:read, chat:write, emoji:read" 
-                            TextWrapping="Wrap" 
-                            FontSize="11" 
-                            FontFamily="Consolas"
-                            Foreground="Gray" />
-                        <TextBlock 
-                            Text="3. 再インストール後、User OAuth Token をコピー" 
-                            TextWrapping="Wrap" 
-                            FontSize="12" />
-                    </StackPanel>
-                </Border>
-
-                <TextBlock 
-                    Text="User OAuth Token" 
-                    FontWeight="SemiBold" 
-                    Margin="0,8,0,4" />
-                <PasswordBox 
-                    x:Name="AccessTokenPasswordBox" 
-                    PlaceholderText="xoxp-..." 
-                    Width="500" />
-
-                <Button
-                    x:Name="AuthenticateButton" 
-                    Content="認証" 
-                    Click="AuthenticateButton_Click" 
-                    HorizontalAlignment="Center" 
-                    Style="{StaticResource AccentButtonStyle}" 
-                    Margin="0,12,0,0" />
-
-                <TextBlock 
-                    x:Name="AuthenticationStatusText" 
-                    Text="" 
-                    Foreground="Red" 
-                    HorizontalAlignment="Center" 
-                    TextWrapping="Wrap" 
-                    Width="500" 
-                    TextAlignment="Center" />
-            </StackPanel>
-        </Grid>
+        <views:AuthenticationView
+            x:Name="AuthenticationPanel"
+            Visibility="Collapsed"
+            AuthenticateRequested="AuthenticationView_AuthenticateRequested" />
 
         <Grid x:Name="MainPanel" Visibility="Collapsed">
             <!-- チャンネル表示エリア -->
@@ -116,144 +42,12 @@
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Border 
-                                Background="{ThemeResource LayerFillColorDefaultBrush}" 
-                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" 
-                                BorderThickness="1" 
-                                CornerRadius="8" 
-                                Width="300"
-                                x:Name="ChannelBorder">
-                                <Grid>
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition Height="Auto" />
-                                        <RowDefinition Height="*" />
-                                    </Grid.RowDefinitions>
-
-                                    <!-- チャンネル名ヘッダー -->
-                                    <Border 
-                                        Grid.Row="0"
-                                        Background="{Binding IsMember, Converter={StaticResource BooleanToHeaderBrushConverter}}" 
-                                        CornerRadius="8,8,0,0" 
-                                        Padding="16,12">
-                                        <HyperlinkButton
-                                            NavigateUri="{Binding ChannelUri}"
-                                            Padding="0"
-                                            HorizontalAlignment="Left">
-                                            <TextBlock 
-                                                Text="{Binding Name}" 
-                                                FontWeight="Bold" 
-                                                FontSize="16" 
-                                                Foreground="White" />
-                                        </HyperlinkButton>
-                                    </Border>
-
-                                    <!-- コンテンツエリア -->
-                                    <ScrollViewer 
-                                        Grid.Row="1" 
-                                        Padding="12"
-                                        VerticalScrollBarVisibility="Auto">
-                                        <ItemsControl ItemsSource="{Binding Messages}">
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate>
-                                                    <Grid Margin="0,8,0,4">
-                                                        <Grid.RowDefinitions>
-                                                            <RowDefinition Height="Auto" />
-                                                            <RowDefinition Height="Auto" />
-                                                            <RowDefinition Height="Auto" />
-                                                        </Grid.RowDefinitions>
-                                                        <Grid.ColumnDefinitions>
-                                                            <ColumnDefinition Width="40" />
-                                                            <ColumnDefinition Width="*" />
-                                                        </Grid.ColumnDefinitions>
-                                                        <HyperlinkButton
-                                                            Grid.Row="0"
-                                                            Grid.Column="1"
-                                                            NavigateUri="{Binding PermalinkUri}"
-                                                            Padding="0"
-                                                            HorizontalAlignment="Right"
-                                                            Margin="0,0,8,2">
-                                                            <TextBlock 
-                                                                Text="{Binding Ts, Converter={StaticResource TimestampToDateTimeConverter}}" 
-                                                                FontSize="10"
-                                                                Foreground="Gray" />
-                                                        </HyperlinkButton>
-                                                        <Border
-                                                            Grid.Row="1"
-                                                            Grid.Column="0"
-                                                            Width="28"
-                                                            Height="28"
-                                                            CornerRadius="14"
-                                                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                                                            BorderThickness="1"
-                                                            Background="White"
-                                                            Margin="0,2,4,0"
-                                                            VerticalAlignment="Top"
-                                                            Tag="{Binding}"
-                                                            Loaded="MessageAvatarBorder_Loaded" />
-                                                        <Border 
-                                                            Grid.Row="1"
-                                                            Grid.Column="1"
-                                                            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                                                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                                                            BorderThickness="1"
-                                                            CornerRadius="4"
-                                                            Padding="8">
-                                                            <StackPanel Spacing="8">
-                                                                <RichTextBlock
-                                                                    Tag="{Binding}"
-                                                                    Loaded="MessageRichTextBlock_Loaded"
-                                                                    TextWrapping="Wrap"
-                                                                    FontSize="18" />
-                                                                <ItemsControl ItemsSource="{Binding Images}">
-                                                                    <ItemsControl.ItemTemplate>
-                                                                        <DataTemplate>
-                                                                            <StackPanel Spacing="8">
-                                                                                <Button
-                                                                                    Content="画像"
-                                                                                    Tag="{Binding}"
-                                                                                    Click="ShowMessageImageButton_Click"
-                                                                                    HorizontalAlignment="Left" />
-                                                                                <Image
-                                                                                    Tag="{Binding}"
-                                                                                    Visibility="Collapsed"
-                                                                                    MaxHeight="240"
-                                                                                    Stretch="Uniform" />
-                                                                            </StackPanel>
-                                                                        </DataTemplate>
-                                                                    </ItemsControl.ItemTemplate>
-                                                                </ItemsControl>
-                                                            </StackPanel>
-                                                        </Border>
-                                                        <ItemsControl
-                                                            Grid.Row="2"
-                                                            Grid.Column="1"
-                                                            ItemsSource="{Binding Reactions}"
-                                                            Margin="0,6,0,0">
-                                                            <ItemsControl.ItemsPanel>
-                                                                <ItemsPanelTemplate>
-                                                                    <StackPanel Orientation="Horizontal" Spacing="6" />
-                                                                </ItemsPanelTemplate>
-                                                            </ItemsControl.ItemsPanel>
-                                                            <ItemsControl.ItemTemplate>
-                                                                <DataTemplate>
-                                                                    <Border
-                                                                        Tag="{Binding}"
-                                                                        Loaded="ReactionBorder_Loaded"
-                                                                        Background="White"
-                                                                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                                                                        BorderThickness="1"
-                                                                        CornerRadius="10"
-                                                                        Padding="6,3" />
-                                                                </DataTemplate>
-                                                            </ItemsControl.ItemTemplate>
-                                                        </ItemsControl>
-                                                    </Grid>
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
-                                    </ScrollViewer>
-                                </Grid>
-                            </Border>
+                            <views:ChannelCardView
+                                Channel="{Binding}"
+                                MessageRichTextBlockLoadedRequested="ChannelCardView_MessageRichTextBlockLoadedRequested"
+                                MessageAvatarBorderLoadedRequested="ChannelCardView_MessageAvatarBorderLoadedRequested"
+                                ReactionBorderLoadedRequested="ChannelCardView_ReactionBorderLoadedRequested"
+                                ShowImageRequested="ChannelCardView_ShowImageRequested" />
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
@@ -345,212 +139,24 @@
                 </Border>
             </StackPanel>
 
-            <!-- 吹き出しポップアップ -->
-            <Grid 
+            <views:UserPopupView
                 x:Name="UserPopupBorder"
-                HorizontalAlignment="Center" 
-                VerticalAlignment="Bottom" 
+                HorizontalAlignment="Center"
+                VerticalAlignment="Bottom"
                 Margin="59,0,0,75"
-                Visibility="Collapsed">
+                Visibility="Collapsed"
+                UpdateTokenRequested="UserPopupView_UpdateTokenRequested"
+                LogoutRequested="UserPopupView_LogoutRequested"
+                AutoRefreshToggleRequested="UserPopupView_AutoRefreshToggleRequested" />
 
-                <!-- メインの吹き出しボックス -->
-                <Border 
-                    Background="{ThemeResource LayerFillColorDefaultBrush}" 
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" 
-                    BorderThickness="1" 
-                    CornerRadius="8" 
-                    Padding="16"
-                    MinWidth="250"
-                    Margin="0,0,0,15">
-                    <StackPanel Spacing="12">
-                        <StackPanel Orientation="Horizontal" Spacing="12">
-                            <Border 
-                                Width="40" 
-                                Height="40" 
-                                CornerRadius="20" 
-                                BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
-                                BorderThickness="2">
-                                <Border.Background>
-                                    <ImageBrush x:Name="PopupAvatarBrush" Stretch="UniformToFill" />
-                                </Border.Background>
-                            </Border>
-                            <StackPanel VerticalAlignment="Center" Spacing="2">
-                                <TextBlock 
-                                    x:Name="PopupUserNameText" 
-                                    Text="" 
-                                    FontWeight="SemiBold" 
-                                    FontSize="14" />
-                                <TextBlock 
-                                    x:Name="PopupUserIdText" 
-                                    Text="" 
-                                    FontSize="12" 
-                                    Foreground="Gray" />
-                            </StackPanel>
-                        </StackPanel>
-
-                        <Border 
-                            Height="1" 
-                            Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
-
-                        <!-- トークン変更フォーム -->
-                        <StackPanel Spacing="8">
-                            <TextBlock 
-                                Text="トークンの変更" 
-                                FontWeight="SemiBold" 
-                                FontSize="13" />
-                            <PasswordBox 
-                                x:Name="PopupAccessTokenPasswordBox" 
-                                PlaceholderText="新しいトークン (xoxp-...)" 
-                                Width="Auto" />
-                            <Button 
-                                x:Name="PopupUpdateTokenButton"
-                                Content="トークンを更新" 
-                                Click="PopupUpdateTokenButton_Click" 
-                                HorizontalAlignment="Stretch" 
-                                Style="{StaticResource AccentButtonStyle}" />
-                            <TextBlock 
-                                x:Name="PopupTokenStatusText" 
-                                Text="" 
-                                FontSize="11" 
-                                HorizontalAlignment="Center" 
-                                TextWrapping="Wrap" 
-                                TextAlignment="Center"
-                                Visibility="Collapsed" />
-                        </StackPanel>
-
-                        <Border 
-                            Height="1" 
-                            Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
-
-                        <!-- envファイルパス表示 -->
-                        <TextBlock 
-                            x:Name="EnvPathText" 
-                            Text="" 
-                            FontSize="11" 
-                            TextWrapping="Wrap" 
-                            Foreground="Gray" 
-                            TextAlignment="Center" />
-
-                        <Border 
-                            Height="1" 
-                            Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
-
-                        <StackPanel Spacing="8">
-                            <TextBlock
-                                Text="自動更新"
-                                FontWeight="SemiBold"
-                                FontSize="13" />
-                            <TextBlock
-                                x:Name="PopupAutoRefreshStatusText"
-                                Text=""
-                                FontSize="11"
-                                Foreground="Gray"
-                                TextWrapping="Wrap"
-                                TextAlignment="Center" />
-                            <Button
-                                x:Name="AutoRefreshToggleButton"
-                                Content="自動更新を停止"
-                                Click="AutoRefreshToggleButton_Click"
-                                HorizontalAlignment="Stretch" />
-                        </StackPanel>
-
-                        <Button 
-                            Content="ログアウト" 
-                            Click="PopupLogoutButton_Click" 
-                            HorizontalAlignment="Stretch" />
-                    </StackPanel>
-                </Border>
-
-                <!-- 吹き出しのポインター（三角形） -->
-                <Polygon 
-                    Points="0,0 10,15 20,0" 
-                    Fill="White" 
-                    Stroke="{ThemeResource CardStrokeColorDefaultBrush}"
-                    StrokeThickness="1"
-                    HorizontalAlignment="Center" 
-                    VerticalAlignment="Bottom" 
-                    Margin="0,0,0,0" />
-            </Grid>
-
-            <!-- ログ表示ポップアップ -->
-            <Grid 
+            <views:LogPopupView
                 x:Name="LogPopupBorder"
-                HorizontalAlignment="Center" 
-                VerticalAlignment="Bottom" 
+                HorizontalAlignment="Center"
+                VerticalAlignment="Bottom"
                 Margin="-59,0,0,75"
-                Visibility="Collapsed">
-
-                <!-- メインの吹き出しボックス -->
-                <Border 
-                    Background="{ThemeResource LayerFillColorDefaultBrush}" 
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" 
-                    BorderThickness="1" 
-                    CornerRadius="8" 
-                    Padding="16"
-                    MinWidth="400"
-                    MaxWidth="600"
-                    Margin="0,0,0,15">
-                    <StackPanel Spacing="12">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock 
-                                Grid.Column="0"
-                                Text="データ取得ログ" 
-                                FontWeight="SemiBold" 
-                                FontSize="14"
-                                VerticalAlignment="Center" />
-                            <Button
-                                Grid.Column="1"
-                                Content="ログをすべてコピー"
-                                Click="CopyLogButton_Click"
-                                Padding="10,4"
-                                HorizontalAlignment="Right" />
-                        </Grid>
-
-                        <Border 
-                            Height="1" 
-                            Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
-
-                        <!-- ログ表示エリア -->
-                        <ScrollViewer 
-                            MaxHeight="300"
-                            VerticalScrollBarVisibility="Auto">
-                            <ItemsControl x:Name="LogItemsControl">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <TextBlock 
-                                            Text="{Binding}" 
-                                            FontSize="11" 
-                                            FontFamily="Consolas"
-                                            TextWrapping="Wrap"
-                                            Margin="0,2" />
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </ScrollViewer>
-
-                        <Button
-                            x:Name="RefreshDataButton"
-                            Content="再取得"
-                            Click="RefreshDataButton_Click"
-                            HorizontalAlignment="Right"
-                            Padding="10,4" />
-                    </StackPanel>
-                </Border>
-
-                <!-- 吹き出しのポインター（三角形） -->
-                <Polygon 
-                    Points="0,0 10,15 20,0" 
-                    Fill="{ThemeResource LayerFillColorDefaultBrush}" 
-                    Stroke="{ThemeResource CardStrokeColorDefaultBrush}"
-                    StrokeThickness="1"
-                    HorizontalAlignment="Center" 
-                    VerticalAlignment="Bottom" 
-                    Margin="0,0,0,0" />
-            </Grid>
+                Visibility="Collapsed"
+                CopyLogRequested="LogPopupView_CopyLogRequested"
+                RefreshRequested="LogPopupView_RefreshRequested" />
 
             <!-- データ取得状況インジケーター -->
             <Button 

@@ -9,67 +9,6 @@ using System.Text.RegularExpressions;
 
 namespace SlackSitter.Models
 {
-    public enum MessageInlineSegmentType
-    {
-        Text,
-        Link,
-        Emoji
-    }
-
-    public sealed class MessageInlineSegment
-    {
-        public MessageInlineSegmentType Type { get; }
-        public string Text { get; }
-        public Uri? Uri { get; }
-        public bool IsBold { get; }
-        public bool IsItalic { get; }
-        public bool IsStrikethrough { get; }
-        public bool IsCode { get; }
-
-        public MessageInlineSegment(
-            MessageInlineSegmentType type,
-            string text,
-            Uri? uri = null,
-            bool isBold = false,
-            bool isItalic = false,
-            bool isStrikethrough = false,
-            bool isCode = false)
-        {
-            Type = type;
-            Text = text;
-            Uri = uri;
-            IsBold = isBold;
-            IsItalic = isItalic;
-            IsStrikethrough = isStrikethrough;
-            IsCode = isCode;
-        }
-    }
-
-    public sealed class MessageReactionItem
-    {
-        public string Name { get; }
-        public int Count { get; }
-
-        public MessageReactionItem(string name, int count)
-        {
-            Name = name;
-            Count = count;
-        }
-    }
-
-    public sealed class MessageImageItem
-    {
-        public IReadOnlyList<string> CandidateUrls { get; }
-
-        public MessageImageItem(IEnumerable<string> candidateUrls)
-        {
-            CandidateUrls = candidateUrls
-                .Where(url => !string.IsNullOrWhiteSpace(url))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToList();
-        }
-    }
-
     public class MessageDisplayItem
     {
         private static readonly Regex SlackLinkRegex = new Regex(@"<(?<url>https?://[^|>]+)(\|(?<label>[^>]+))?>", RegexOptions.Compiled);
