@@ -848,8 +848,8 @@ namespace SlackSitter
 
             // データ取得中インジケーターを赤色に設定
             LoadingIndicatorButton.Visibility = Visibility.Visible;
-            LoadingIndicator.BorderBrush = new SolidColorBrush(Microsoft.UI.Colors.Red);
-            LoadingIcon.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Red);
+            LoadingIndicatorButton.InnerBorderBrush = new SolidColorBrush(Microsoft.UI.Colors.Red);
+            LoadingIndicatorButton.ContentForeground = new SolidColorBrush(Microsoft.UI.Colors.Red);
 
             StatusText.Text = "チャンネル一覧を読み込み中...";
             StatusText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray);
@@ -913,16 +913,16 @@ namespace SlackSitter
                     AddLog("チャンネルが取得できませんでした。権限を確認してください。");
 
                     // インジケーターをグレーに設定
-                    LoadingIndicator.BorderBrush = new SolidColorBrush(Microsoft.UI.Colors.Gray);
-                    LoadingIcon.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray);
+                    LoadingIndicatorButton.InnerBorderBrush = new SolidColorBrush(Microsoft.UI.Colors.Gray);
+                    LoadingIndicatorButton.ContentForeground = new SolidColorBrush(Microsoft.UI.Colors.Gray);
                 }
                 else if (totalTimesChannelsCount > 0)
                 {
                     AddLog("=== チャンネル情報の取得完了 ===");
 
                     // データ取得完了 - インジケーターをグレーに変更
-                    LoadingIndicator.BorderBrush = new SolidColorBrush(Microsoft.UI.Colors.Gray);
-                    LoadingIcon.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray);
+                    LoadingIndicatorButton.InnerBorderBrush = new SolidColorBrush(Microsoft.UI.Colors.Gray);
+                    LoadingIndicatorButton.ContentForeground = new SolidColorBrush(Microsoft.UI.Colors.Gray);
                     AddLog("=== チャンネル一覧の取得完了 ===");
                 }
                 else
@@ -931,8 +931,8 @@ namespace SlackSitter
                     StatusText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Orange);
                     StatusPanel.Visibility = Visibility.Visible;
 
-                    LoadingIndicator.BorderBrush = new SolidColorBrush(Microsoft.UI.Colors.Gray);
-                    LoadingIcon.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray);
+                    LoadingIndicatorButton.InnerBorderBrush = new SolidColorBrush(Microsoft.UI.Colors.Gray);
+                    LoadingIndicatorButton.ContentForeground = new SolidColorBrush(Microsoft.UI.Colors.Gray);
 
                     AddLog("=== チャンネル一覧の取得完了 ===");
                 }
@@ -950,8 +950,8 @@ namespace SlackSitter
                 }
 
                 // エラー時はインジケーターをグレーに設定
-                LoadingIndicator.BorderBrush = new SolidColorBrush(Microsoft.UI.Colors.Gray);
-                LoadingIcon.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray);
+                LoadingIndicatorButton.InnerBorderBrush = new SolidColorBrush(Microsoft.UI.Colors.Gray);
+                LoadingIndicatorButton.ContentForeground = new SolidColorBrush(Microsoft.UI.Colors.Gray);
             }
         }
 
@@ -969,7 +969,11 @@ namespace SlackSitter
                     _currentUserName = userName;
 
                     var bitmap = new Microsoft.UI.Xaml.Media.Imaging.BitmapImage(new Uri(userImageUrl));
-                    UserAvatarBrush.ImageSource = bitmap;
+                    UserAvatarButton.InnerBackground = new ImageBrush
+                    {
+                        ImageSource = bitmap,
+                        Stretch = Stretch.UniformToFill
+                    };
                     UserPopupBorder.SetAvatarImage(bitmap);
                     UserAvatarButton.Visibility = Visibility.Visible;
                     CircleIcon1Button.Visibility = Visibility.Visible;

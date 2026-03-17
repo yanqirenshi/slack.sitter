@@ -158,118 +158,44 @@
                 CopyLogRequested="LogPopupView_CopyLogRequested"
                 RefreshRequested="LogPopupView_RefreshRequested" />
 
-            <!-- データ取得状況インジケーター -->
-            <Button 
+            <views:CircleActionButtonView
                 x:Name="LoadingIndicatorButton"
-                Width="48" 
-                Height="48" 
-                Padding="0"
-                HorizontalAlignment="Center" 
-                VerticalAlignment="Bottom" 
+                HorizontalAlignment="Center"
+                VerticalAlignment="Bottom"
                 Margin="-59,0,0,20"
-                Background="White"
-                BorderThickness="0"
-                CornerRadius="24"
+                CenterGlyph="&#xE895;"
+                ContentForeground="Gray"
                 Click="LoadingIndicatorButton_Click"
-                Visibility="Collapsed">
-                <Border 
-                    Width="48" 
-                    Height="48" 
-                    CornerRadius="24" 
-                    x:Name="LoadingIndicator"
-                    Background="White"
-                    BorderThickness="2">
-                    <FontIcon 
-                        x:Name="LoadingIcon"
-                        Glyph="&#xE895;" 
-                        FontSize="24" 
-                        Foreground="Gray" />
-                </Border>
-            </Button>
+                Visibility="Collapsed" />
 
-            <!-- ユーザーアイコンボタン -->
-            <Button 
+            <views:CircleActionButtonView
                 x:Name="UserAvatarButton"
-                Width="48" 
-                Height="48" 
-                Padding="0"
-                HorizontalAlignment="Center" 
-                VerticalAlignment="Bottom" 
+                HorizontalAlignment="Center"
+                VerticalAlignment="Bottom"
                 Margin="59,0,0,20"
-                Background="White"
-                BorderThickness="0"
-                CornerRadius="24"
+                InnerBorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
                 Click="UserAvatarButton_Click"
-                Visibility="Collapsed">
-                <Border 
-                    Width="48" 
-                    Height="48" 
-                    CornerRadius="24" 
-                    BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
-                    BorderThickness="2">
-                    <Border.Background>
-                        <ImageBrush x:Name="UserAvatarBrush" Stretch="UniformToFill" />
-                    </Border.Background>
-                </Border>
-            </Button>
+                Visibility="Collapsed" />
 
-            <Button
+            <views:CircleActionButtonView
                 x:Name="CircleIcon1Button"
-                Width="48"
-                Height="48"
-                Padding="0"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Bottom"
                 Margin="177,0,0,20"
-                Background="White"
-                BorderThickness="0"
-                CornerRadius="24"
+                InnerBorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
+                CenterText="①"
                 Click="CircleIcon1Button_Click"
-                Visibility="Collapsed">
-                <Border
-                    Width="48"
-                    Height="48"
-                    CornerRadius="24"
-                    BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
-                    BorderThickness="2"
-                    Background="White">
-                    <TextBlock
-                        Text="①"
-                        FontSize="24"
-                        HorizontalAlignment="Center"
-                        VerticalAlignment="Center"
-                        TextAlignment="Center" />
-                </Border>
-            </Button>
+                Visibility="Collapsed" />
 
-            <Button
+            <views:CircleActionButtonView
                 x:Name="CircleIcon2Button"
-                Width="48"
-                Height="48"
-                Padding="0"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Bottom"
                 Margin="295,0,0,20"
-                Background="White"
-                BorderThickness="0"
-                CornerRadius="24"
+                InnerBorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
+                CenterText="②"
                 Click="CircleIcon2Button_Click"
-                Visibility="Collapsed">
-                <Border
-                    Width="48"
-                    Height="48"
-                    CornerRadius="24"
-                    BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
-                    BorderThickness="2"
-                    Background="White">
-                    <TextBlock
-                        Text="②"
-                        FontSize="24"
-                        HorizontalAlignment="Center"
-                        VerticalAlignment="Center"
-                        TextAlignment="Center" />
-                </Border>
-            </Button>
+                Visibility="Collapsed" />
         </Grid>
     </Grid>
 </Window>
