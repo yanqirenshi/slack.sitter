@@ -10,7 +10,20 @@
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
                 <!-- Other merged dictionaries here -->
             </ResourceDictionary.MergedDictionaries>
-            <!-- Other app resources here -->
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Default">
+                    <SolidColorBrush x:Key="OpaquePopupBackgroundBrush" Color="#FFFFFFFF" />
+                    <SolidColorBrush x:Key="OpaquePopupBorderBrush" Color="#FFD0D0D0" />
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="OpaquePopupBackgroundBrush" Color="#FFFFFFFF" />
+                    <SolidColorBrush x:Key="OpaquePopupBorderBrush" Color="#FFD0D0D0" />
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Dark">
+                    <SolidColorBrush x:Key="OpaquePopupBackgroundBrush" Color="#FF1F1F1F" />
+                    <SolidColorBrush x:Key="OpaquePopupBorderBrush" Color="#FF4A4A4A" />
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
         </ResourceDictionary>
     </Application.Resources>
 </Application>
