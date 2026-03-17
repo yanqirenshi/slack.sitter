@@ -158,66 +158,14 @@
                 CopyLogRequested="LogPopupView_CopyLogRequested"
                 RefreshRequested="LogPopupView_RefreshRequested" />
 
-            <views:CircleActionButtonView
-                x:Name="LoadingIndicatorButton"
-                HorizontalAlignment="Center"
-                VerticalAlignment="Bottom"
-                Margin="-118,0,0,20"
-                CenterGlyph="&#xE895;"
-                ContentForeground="Gray"
-                Click="LoadingIndicatorButton_Click"
-                Visibility="Collapsed" />
-
-            <views:CircleActionButtonView
-                x:Name="GearIconButton"
-                HorizontalAlignment="Center"
-                VerticalAlignment="Bottom"
-                Margin="118,0,0,20"
-                InnerBorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
-                CenterGlyph="&#xE713;"
-                Click="GearIconButton_Click"
-                Visibility="Collapsed" />
-
-            <views:CircleActionButtonView
-                x:Name="UserAvatarButton"
-                HorizontalAlignment="Center"
-                VerticalAlignment="Bottom"
-                Margin="0,0,0,20"
-                InnerBorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
-                Click="UserAvatarButton_Click"
-                Visibility="Collapsed" />
-
-            <views:CircleActionButtonView
-                x:Name="PlusIconButton"
-                HorizontalAlignment="Center"
-                VerticalAlignment="Bottom"
-                Margin="236,0,0,20"
-                InnerBorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
-                CenterGlyph="&#xE710;"
-                Click="PlusIconButton_Click"
-                Visibility="Collapsed" />
-
-            <views:CircleActionButtonView
-                x:Name="CircleIcon1Button"
-                HorizontalAlignment="Center"
-                VerticalAlignment="Bottom"
-                Margin="354,0,0,20"
-                IsCircular="False"
-                InnerBorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
-                CenterText="①"
-                Click="CircleIcon1Button_Click"
-                Visibility="Collapsed" />
-
-            <views:CircleActionButtonView
-                x:Name="CircleIcon2Button"
-                HorizontalAlignment="Center"
-                VerticalAlignment="Bottom"
-                Margin="472,0,0,20"
-                IsCircular="False"
-                InnerBorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
-                CenterText="②"
-                Click="CircleIcon2Button_Click"
-                Visibility="Collapsed" />
+            <views:MainControllerView
+                x:Name="MainController"
+                LoadingIndicatorClick="MainController_LoadingIndicatorClick"
+                GearIconClick="MainController_GearIconClick"
+                UserAvatarClick="MainController_UserAvatarClick"
+                PlusIconClick="MainController_PlusIconClick"
+                CircleIcon1Click="MainController_CircleIcon1Click"
+                CircleIcon2Click="MainController_CircleIcon2Click" />
         </Grid>
     </Grid>
 </Window>

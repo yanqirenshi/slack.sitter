@@ -1,0 +1,72 @@
+<UserControl
+    x:Class="SlackSitter.Views.MainControllerView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:views="using:SlackSitter.Views"
+    mc:Ignorable="d">
+
+    <Grid>
+        <views:CircleActionButtonView
+            x:Name="LoadingIndicatorButton"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Bottom"
+            Margin="-118,0,0,20"
+            CenterGlyph="&#xE895;"
+            ContentForeground="Gray"
+            Click="LoadingIndicatorButton_Click"
+            Visibility="Collapsed" />
+
+        <views:CircleActionButtonView
+            x:Name="UserAvatarButton"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Bottom"
+            Margin="0,0,0,20"
+            InnerBorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
+            Click="UserAvatarButton_Click"
+            Visibility="Collapsed" />
+
+        <views:CircleActionButtonView
+            x:Name="GearIconButton"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Bottom"
+            Margin="118,0,0,20"
+            InnerBorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
+            CenterGlyph="&#xE713;"
+            Click="GearIconButton_Click"
+            Visibility="Collapsed" />
+
+        <views:CircleActionButtonView
+            x:Name="PlusIconButton"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Bottom"
+            Margin="236,0,0,20"
+            InnerBorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
+            CenterGlyph="&#xE710;"
+            Click="PlusIconButton_Click"
+            Visibility="Collapsed" />
+
+        <views:CircleActionButtonView
+            x:Name="CircleIcon1Button"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Bottom"
+            Margin="354,0,0,20"
+            IsCircular="False"
+            InnerBorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
+            CenterText="①"
+            Click="CircleIcon1Button_Click"
+            Visibility="Collapsed" />
+
+        <views:CircleActionButtonView
+            x:Name="CircleIcon2Button"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Bottom"
+            Margin="472,0,0,20"
+            IsCircular="False"
+            InnerBorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
+            CenterText="②"
+            Click="CircleIcon2Button_Click"
+            Visibility="Collapsed" />
+    </Grid>
+</UserControl>

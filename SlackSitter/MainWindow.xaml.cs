@@ -654,7 +654,7 @@ namespace SlackSitter
             return batchResults.ToList();
         }
 
-        private void LoadingIndicatorButton_Click(object sender, RoutedEventArgs e)
+        private void MainController_LoadingIndicatorClick(object sender, RoutedEventArgs e)
         {
             if (LogPopupBorder.Visibility == Visibility.Visible)
             {
@@ -747,25 +747,12 @@ namespace SlackSitter
 
         private void UpdateChannelFilterButtonState()
         {
-            var accentBrush = GetThemeBrush("AccentFillColorDefaultBrush", new SolidColorBrush(Microsoft.UI.Colors.Blue));
-            var primaryTextBrush = GetThemeBrush("TextFillColorPrimaryBrush", new SolidColorBrush(Microsoft.UI.Colors.Black));
-            var selectedBrush = new SolidColorBrush(Microsoft.UI.Colors.Red);
-
-            CircleIcon1Button.InnerBorderBrush = _currentChannelDisplayFilter == ChannelDisplayFilter.JoinedOnly ? selectedBrush : accentBrush;
-            CircleIcon1Button.ContentForeground = _currentChannelDisplayFilter == ChannelDisplayFilter.JoinedOnly ? selectedBrush : primaryTextBrush;
-
-            CircleIcon2Button.InnerBorderBrush = _currentChannelDisplayFilter == ChannelDisplayFilter.NotJoinedOnly ? selectedBrush : accentBrush;
-            CircleIcon2Button.ContentForeground = _currentChannelDisplayFilter == ChannelDisplayFilter.NotJoinedOnly ? selectedBrush : primaryTextBrush;
+            MainController.SetFilterButtonState(
+                _currentChannelDisplayFilter == ChannelDisplayFilter.JoinedOnly,
+                _currentChannelDisplayFilter == ChannelDisplayFilter.NotJoinedOnly);
         }
 
-        private static Brush GetThemeBrush(string resourceKey, Brush fallback)
-        {
-            return Application.Current.Resources.TryGetValue(resourceKey, out var resource) && resource is Brush brush
-                ? brush
-                : fallback;
-        }
-
-        private void CircleIcon1Button_Click(object sender, RoutedEventArgs e)
+        private void MainController_CircleIcon1Click(object sender, RoutedEventArgs e)
         {
             _currentChannelDisplayFilter = _currentChannelDisplayFilter == ChannelDisplayFilter.JoinedOnly
                 ? ChannelDisplayFilter.All
@@ -778,7 +765,7 @@ namespace SlackSitter
                 : "すべてのチャンネル表示に戻しました");
         }
 
-        private void CircleIcon2Button_Click(object sender, RoutedEventArgs e)
+        private void MainController_CircleIcon2Click(object sender, RoutedEventArgs e)
         {
             _currentChannelDisplayFilter = _currentChannelDisplayFilter == ChannelDisplayFilter.NotJoinedOnly
                 ? ChannelDisplayFilter.All
@@ -870,9 +857,7 @@ namespace SlackSitter
             AddLog("=== チャンネル一覧の取得開始 ===");
 
             // データ取得中インジケーターを赤色に設定
-            LoadingIndicatorButton.Visibility = Visibility.Visible;
-            LoadingIndicatorButton.InnerBorderBrush = new SolidColorBrush(Microsoft.UI.Colors.Red);
-            LoadingIndicatorButton.ContentForeground = new SolidColorBrush(Microsoft.UI.Colors.Red);
+            MainController.ShowLoadingIndicatorBusy();
 
             StatusText.Text = "チャンネル一覧を読み込み中...";
             StatusText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray);
@@ -936,16 +921,14 @@ namespace SlackSitter
                     AddLog("チャンネルが取得できませんでした。権限を確認してください。");
 
                     // インジケーターをグレーに設定
-                    LoadingIndicatorButton.InnerBorderBrush = new SolidColorBrush(Microsoft.UI.Colors.Gray);
-                    LoadingIndicatorButton.ContentForeground = new SolidColorBrush(Microsoft.UI.Colors.Gray);
+                    MainController.SetLoadingIndicatorIdle();
                 }
                 else if (totalTimesChannelsCount > 0)
                 {
                     AddLog("=== チャンネル情報の取得完了 ===");
 
                     // データ取得完了 - インジケーターをグレーに変更
-                    LoadingIndicatorButton.InnerBorderBrush = new SolidColorBrush(Microsoft.UI.Colors.Gray);
-                    LoadingIndicatorButton.ContentForeground = new SolidColorBrush(Microsoft.UI.Colors.Gray);
+                    MainController.SetLoadingIndicatorIdle();
                     AddLog("=== チャンネル一覧の取得完了 ===");
                 }
                 else
@@ -954,8 +937,7 @@ namespace SlackSitter
                     StatusText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Orange);
                     StatusPanel.Visibility = Visibility.Visible;
 
-                    LoadingIndicatorButton.InnerBorderBrush = new SolidColorBrush(Microsoft.UI.Colors.Gray);
-                    LoadingIndicatorButton.ContentForeground = new SolidColorBrush(Microsoft.UI.Colors.Gray);
+                    MainController.SetLoadingIndicatorIdle();
 
                     AddLog("=== チャンネル一覧の取得完了 ===");
                 }
@@ -973,8 +955,7 @@ namespace SlackSitter
                 }
 
                 // エラー時はインジケーターをグレーに設定
-                LoadingIndicatorButton.InnerBorderBrush = new SolidColorBrush(Microsoft.UI.Colors.Gray);
-                LoadingIndicatorButton.ContentForeground = new SolidColorBrush(Microsoft.UI.Colors.Gray);
+                MainController.SetLoadingIndicatorIdle();
             }
         }
 
@@ -992,17 +973,9 @@ namespace SlackSitter
                     _currentUserName = userName;
 
                     var bitmap = new Microsoft.UI.Xaml.Media.Imaging.BitmapImage(new Uri(userImageUrl));
-                    UserAvatarButton.InnerBackground = new ImageBrush
-                    {
-                        ImageSource = bitmap,
-                        Stretch = Stretch.UniformToFill
-                    };
+                    MainController.SetUserAvatarImage(bitmap);
                     UserPopupBorder.SetAvatarImage(bitmap);
-                    GearIconButton.Visibility = Visibility.Visible;
-                    UserAvatarButton.Visibility = Visibility.Visible;
-                    PlusIconButton.Visibility = Visibility.Visible;
-                    CircleIcon1Button.Visibility = Visibility.Visible;
-                    CircleIcon2Button.Visibility = Visibility.Visible;
+                    MainController.ShowUserActionButtons();
 
                     UserPopupBorder.UserNameText = userName ?? "Unknown";
                     UserPopupBorder.UserIdText = userId ?? string.Empty;
@@ -1010,35 +983,27 @@ namespace SlackSitter
                 else
                 {
                     System.Diagnostics.Debug.WriteLine("ユーザーアイコンの取得に失敗しました");
-                    GearIconButton.Visibility = Visibility.Collapsed;
-                    UserAvatarButton.Visibility = Visibility.Collapsed;
-                    PlusIconButton.Visibility = Visibility.Collapsed;
-                    CircleIcon1Button.Visibility = Visibility.Collapsed;
-                    CircleIcon2Button.Visibility = Visibility.Collapsed;
+                    MainController.HideUserActionButtons();
                 }
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"ユーザーアイコンの読み込み中にエラーが発生: {ex.Message}");
-                GearIconButton.Visibility = Visibility.Collapsed;
-                UserAvatarButton.Visibility = Visibility.Collapsed;
-                PlusIconButton.Visibility = Visibility.Collapsed;
-                CircleIcon1Button.Visibility = Visibility.Collapsed;
-                CircleIcon2Button.Visibility = Visibility.Collapsed;
+                MainController.HideUserActionButtons();
             }
         }
 
-        private void GearIconButton_Click(object sender, RoutedEventArgs e)
+        private void MainController_GearIconClick(object sender, RoutedEventArgs e)
         {
             AddLog("歯車ボタンは未実装です");
         }
 
-        private void PlusIconButton_Click(object sender, RoutedEventArgs e)
+        private void MainController_PlusIconClick(object sender, RoutedEventArgs e)
         {
             AddLog("+ ボタンは未実装です");
         }
 
-        private void UserAvatarButton_Click(object sender, RoutedEventArgs e)
+        private void MainController_UserAvatarClick(object sender, RoutedEventArgs e)
         {
             if (UserPopupBorder.Visibility == Visibility.Visible)
             {
@@ -1100,11 +1065,7 @@ namespace SlackSitter
 
             MainPanel.Visibility = Visibility.Collapsed;
             AuthenticationPanel.Visibility = Visibility.Visible;
-            GearIconButton.Visibility = Visibility.Collapsed;
-            UserAvatarButton.Visibility = Visibility.Collapsed;
-            PlusIconButton.Visibility = Visibility.Collapsed;
-            CircleIcon1Button.Visibility = Visibility.Collapsed;
-            CircleIcon2Button.Visibility = Visibility.Collapsed;
+            MainController.Reset();
             UserPopupBorder.Visibility = Visibility.Collapsed;
             UpdateAutoRefreshTimerState();
         }
