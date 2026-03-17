@@ -36,6 +36,12 @@ namespace SlackSitter.Views
         public static readonly DependencyProperty ContentFontSizeProperty =
             DependencyProperty.Register(nameof(ContentFontSize), typeof(double), typeof(CircleActionButtonView), new PropertyMetadata(24d, OnVisualPropertyChanged));
 
+        public static readonly DependencyProperty IsCircularProperty =
+            DependencyProperty.Register(nameof(IsCircular), typeof(bool), typeof(CircleActionButtonView), new PropertyMetadata(true, OnVisualPropertyChanged));
+
+        public static readonly DependencyProperty SquareCornerRadiusProperty =
+            DependencyProperty.Register(nameof(SquareCornerRadius), typeof(double), typeof(CircleActionButtonView), new PropertyMetadata(8d, OnVisualPropertyChanged));
+
         public event RoutedEventHandler? Click;
 
         public CircleActionButtonView()
@@ -125,6 +131,18 @@ namespace SlackSitter.Views
             set => SetValue(ContentFontSizeProperty, value);
         }
 
+        public bool IsCircular
+        {
+            get => (bool)GetValue(IsCircularProperty);
+            set => SetValue(IsCircularProperty, value);
+        }
+
+        public double SquareCornerRadius
+        {
+            get => (double)GetValue(SquareCornerRadiusProperty);
+            set => SetValue(SquareCornerRadiusProperty, value);
+        }
+
         private static void OnVisualPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
             if (d is CircleActionButtonView view)
@@ -135,16 +153,18 @@ namespace SlackSitter.Views
 
         private void UpdateVisuals()
         {
+            var cornerRadius = IsCircular ? Diameter / 2 : SquareCornerRadius;
+
             Width = Diameter;
             Height = Diameter;
 
             _button.Width = Diameter;
             _button.Height = Diameter;
-            _button.CornerRadius = new CornerRadius(Diameter / 2);
+            _button.CornerRadius = new CornerRadius(cornerRadius);
 
             _innerBorder.Width = Diameter;
             _innerBorder.Height = Diameter;
-            _innerBorder.CornerRadius = new CornerRadius(Diameter / 2);
+            _innerBorder.CornerRadius = new CornerRadius(cornerRadius);
             _innerBorder.Background = InnerBackground;
             _innerBorder.BorderBrush = InnerBorderBrush;
             _innerBorder.BorderThickness = InnerBorderThickness;
