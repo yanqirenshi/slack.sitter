@@ -49,7 +49,6 @@ namespace SlackSitter
         private ObservableCollection<ChannelWithMessages> _channelsWithMessages;
         private ObservableCollection<string> _logMessages;
         private readonly List<ChannelWithMessages> _allChannels = new List<ChannelWithMessages>();
-        private readonly LogPopupView _activityLogPopupBorder;
         private Dictionary<string, string> _customEmojiMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         private ChannelDisplayFilter _currentChannelDisplayFilter = ChannelDisplayFilter.JoinedOnly;
         private bool _isAutoRefreshEnabled = true;
@@ -68,22 +67,7 @@ namespace SlackSitter
             _autoRefreshTimer.Tick += AutoRefreshTimer_Tick;
             _channelsWithMessages = new ObservableCollection<ChannelWithMessages>();
             _logMessages = new ObservableCollection<string>();
-            _activityLogPopupBorder = new LogPopupView();
-            LogPopupBorder.SetLogItemsSource(_logMessages);
-            LogPopupBorder.SetTitle("データ取得");
-            LogPopupBorder.SetCopyVisible(false);
-            LogPopupBorder.SetLogContentVisible(false);
-            LogPopupBorder.SetRefreshVisible(true);
-            _activityLogPopupBorder.SetLogItemsSource(_logMessages);
-            _activityLogPopupBorder.SetTitle("ログ");
-            _activityLogPopupBorder.SetCopyVisible(true);
-            _activityLogPopupBorder.SetLogContentVisible(true);
-            _activityLogPopupBorder.SetRefreshVisible(false);
-            _activityLogPopupBorder.Visibility = Visibility.Collapsed;
-            _activityLogPopupBorder.CopyLogRequested += LogPopupView_CopyLogRequested;
-            _activityLogPopupBorder.HorizontalAlignment = HorizontalAlignment.Left;
-            _activityLogPopupBorder.VerticalAlignment = VerticalAlignment.Top;
-            MainPanel.Children.Add(_activityLogPopupBorder);
+            MainController.SetLogItemsSource(_logMessages);
             UpdateChannelFilterButtonState();
             UpdateAutoRefreshTimerState();
 
@@ -645,84 +629,6 @@ namespace SlackSitter
             return batchResults.ToList();
         }
 
-        private void MainController_LogIconClick(object sender, RoutedEventArgs e)
-        {
-            TogglePopup(_activityLogPopupBorder, sender, UserPopupBorder, LogPopupBorder);
-        }
-
-        private void MainController_LoadingIndicatorClick(object sender, RoutedEventArgs e)
-        {
-            TogglePopup(LogPopupBorder, sender, UserPopupBorder, _activityLogPopupBorder);
-        }
-
-        private void TogglePopup(FrameworkElement popup, object sender, params FrameworkElement[] otherPopups)
-        {
-            if (popup.Visibility == Visibility.Visible)
-            {
-                popup.Visibility = Visibility.Collapsed;
-            }
-            else
-            {
-                foreach (var otherPopup in otherPopups)
-                {
-                    otherPopup.Visibility = Visibility.Collapsed;
-                }
-
-                if (sender is CircleActionButtonView button)
-                {
-                    ShowPopupAtButton(popup, button);
-                }
-                else
-                {
-                    popup.Visibility = Visibility.Visible;
-                }
-            }
-        }
-
-        private void ShowPopupAtButton(FrameworkElement popup, CircleActionButtonView button)
-        {
-            popup.Visibility = Visibility.Visible;
-            popup.HorizontalAlignment = HorizontalAlignment.Left;
-            popup.VerticalAlignment = VerticalAlignment.Top;
-            popup.UpdateLayout();
-
-            var popupSize = MeasureElement(popup);
-            var buttonOrigin = button.TransformToVisual(MainPanel).TransformPoint(new Point(0, 0));
-            var buttonCenterX = buttonOrigin.X + (button.ActualWidth / 2);
-            var left = Math.Clamp(
-                buttonCenterX - (popupSize.Width / 2),
-                0,
-                Math.Max(0, MainPanel.ActualWidth - popupSize.Width));
-            var top = Math.Max(0, buttonOrigin.Y - popupSize.Height);
-
-            popup.Margin = new Thickness(left, top, 0, 0);
-            SetPopupPointerOffset(popup, popupSize.Width, buttonCenterX - left);
-        }
-
-        private static void SetPopupPointerOffset(FrameworkElement popup, double popupWidth, double pointerCenterX)
-        {
-            var clampedPointerCenterX = Math.Clamp(pointerCenterX, 20d, Math.Max(20d, popupWidth - 20d));
-            var pointerOffset = clampedPointerCenterX - (popupWidth / 2);
-
-            switch (popup)
-            {
-                case UserPopupView userPopup:
-                    userPopup.SetPointerHorizontalOffset(pointerOffset);
-                    break;
-                case LogPopupView logPopup:
-                    logPopup.SetPointerHorizontalOffset(pointerOffset);
-                    break;
-            }
-        }
-
-        private static Size MeasureElement(FrameworkElement element)
-        {
-            element.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-            var width = element.ActualWidth > 0 ? element.ActualWidth : element.DesiredSize.Width;
-            var height = element.ActualHeight > 0 ? element.ActualHeight : element.DesiredSize.Height;
-            return new Size(width, height);
-        }
-
         private void LogPopupView_CopyLogRequested(object sender, RoutedEventArgs e)
         {
             var dataPackage = new DataPackage();
@@ -743,13 +649,11 @@ namespace SlackSitter
                 _autoRefreshTimer.Stop();
             }
 
-            if (UserPopupBorder != null)
-            {
-                UserPopupBorder.AutoRefreshButtonText = _isAutoRefreshEnabled ? "自動更新を停止" : "自動更新を再開";
-                UserPopupBorder.AutoRefreshStatusText = _isAutoRefreshEnabled
+            MainController.SetAutoRefreshState(
+                _isAutoRefreshEnabled ? "自動更新を停止" : "自動更新を再開",
+                _isAutoRefreshEnabled
                     ? $"自動更新: 有効 ({(int)AutoRefreshInterval.TotalMinutes}分ごと)"
-                    : "自動更新: 停止中";
-            }
+                    : "自動更新: 停止中");
         }
 
         private async Task RefreshWorkspaceDataAsync(string? startLogMessage = null, string? endLogMessage = null)
@@ -896,7 +800,7 @@ namespace SlackSitter
                 AuthenticationPanel.StatusMessage = string.Empty;
                 MainPanel.Visibility = Visibility.Visible;
 
-                UserPopupBorder.EnvironmentPathText = $".env ファイルの保存先: {_settingsService.GetEnvFilePath()}";
+                MainController.SetEnvironmentPathText($".env ファイルの保存先: {_settingsService.GetEnvFilePath()}");
 
                 await RefreshWorkspaceDataAsync();
             }
@@ -1015,11 +919,8 @@ namespace SlackSitter
 
                     var bitmap = new Microsoft.UI.Xaml.Media.Imaging.BitmapImage(new Uri(userImageUrl));
                     MainController.SetUserAvatarImage(bitmap);
-                    UserPopupBorder.SetAvatarImage(bitmap);
+                    MainController.SetUserInfo(userName, userId);
                     MainController.ShowUserActionButtons();
-
-                    UserPopupBorder.UserNameText = userName ?? "Unknown";
-                    UserPopupBorder.UserIdText = userId ?? string.Empty;
                 }
                 else
                 {
@@ -1044,30 +945,9 @@ namespace SlackSitter
             AddLog("+ ボタンは未実装です");
         }
 
-        private void MainController_UserAvatarClick(object sender, RoutedEventArgs e)
-        {
-            if (UserPopupBorder.Visibility == Visibility.Visible)
-            {
-                UserPopupBorder.Visibility = Visibility.Collapsed;
-            }
-            else
-            {
-                LogPopupBorder.Visibility = Visibility.Collapsed;
-
-                if (sender is CircleActionButtonView button)
-                {
-                    ShowPopupAtButton(UserPopupBorder, button);
-                }
-                else
-                {
-                    UserPopupBorder.Visibility = Visibility.Visible;
-                }
-            }
-        }
-
         private async void UserPopupView_LogoutRequested(object sender, RoutedEventArgs e)
         {
-            UserPopupBorder.Visibility = Visibility.Collapsed;
+            MainController.HideAllPopups();
             await LogoutAsync();
         }
 
@@ -1083,22 +963,22 @@ namespace SlackSitter
                 };
                 await _settingsService.SaveSettingsAsync(settings);
 
-                sender.ShowTokenStatus("✅ トークンを更新しました", new SolidColorBrush(Microsoft.UI.Colors.Green));
-                sender.ClearPendingAccessToken();
+                MainController.ShowTokenStatus("✅ トークンを更新しました", new SolidColorBrush(Microsoft.UI.Colors.Green));
+                MainController.ClearPendingAccessToken();
 
                 await RefreshWorkspaceDataAsync("=== データ再取得開始 ===", "=== データ再取得完了 ===");
 
                 await System.Threading.Tasks.Task.Delay(2000);
-                sender.HideTokenStatus();
-                UserPopupBorder.Visibility = Visibility.Collapsed;
+                MainController.HideTokenStatus();
+                MainController.HideAllPopups();
             }
             else
             {
-                sender.ShowTokenStatus("❌ 認証に失敗しました", new SolidColorBrush(Microsoft.UI.Colors.Red));
+                MainController.ShowTokenStatus("❌ 認証に失敗しました", new SolidColorBrush(Microsoft.UI.Colors.Red));
                 UpdateAutoRefreshTimerState();
             }
 
-            sender.SetUpdateTokenBusy(false);
+            MainController.SetUpdateTokenBusy(false);
         }
 
         private async System.Threading.Tasks.Task LogoutAsync()
@@ -1110,14 +990,10 @@ namespace SlackSitter
             await _settingsService.SaveSettingsAsync(settings);
 
             AuthenticationPanel.ResetStatus();
-            UserPopupBorder.Reset();
 
             MainPanel.Visibility = Visibility.Collapsed;
             AuthenticationPanel.Visibility = Visibility.Visible;
             MainController.Reset();
-            LogPopupBorder.Visibility = Visibility.Collapsed;
-            _activityLogPopupBorder.Visibility = Visibility.Collapsed;
-            UserPopupBorder.Visibility = Visibility.Collapsed;
             UpdateAutoRefreshTimerState();
         }
     }

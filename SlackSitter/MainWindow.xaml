@@ -36,34 +36,17 @@
 
             <views:StatusPanelView x:Name="StatusPanel" />
 
-            <views:UserPopupView
-                x:Name="UserPopupBorder"
-                HorizontalAlignment="Center"
-                VerticalAlignment="Bottom"
-                Margin="59,0,0,75"
-                Visibility="Collapsed"
+            <views:MainControllerView
+                x:Name="MainController"
+                GearIconClick="MainController_GearIconClick"
+                PlusIconClick="MainController_PlusIconClick"
+                CircleIcon1Click="MainController_CircleIcon1Click"
+                CircleIcon2Click="MainController_CircleIcon2Click"
+                CopyLogRequested="LogPopupView_CopyLogRequested"
+                RefreshRequested="LogPopupView_RefreshRequested"
                 UpdateTokenRequested="UserPopupView_UpdateTokenRequested"
                 LogoutRequested="UserPopupView_LogoutRequested"
                 AutoRefreshToggleRequested="UserPopupView_AutoRefreshToggleRequested" />
-
-            <views:LogPopupView
-                x:Name="LogPopupBorder"
-                HorizontalAlignment="Center"
-                VerticalAlignment="Bottom"
-                Margin="-59,0,0,75"
-                Visibility="Collapsed"
-                CopyLogRequested="LogPopupView_CopyLogRequested"
-                RefreshRequested="LogPopupView_RefreshRequested" />
-
-            <views:MainControllerView
-                x:Name="MainController"
-                LogIconClick="MainController_LogIconClick"
-                LoadingIndicatorClick="MainController_LoadingIndicatorClick"
-                GearIconClick="MainController_GearIconClick"
-                UserAvatarClick="MainController_UserAvatarClick"
-                PlusIconClick="MainController_PlusIconClick"
-                CircleIcon1Click="MainController_CircleIcon1Click"
-                CircleIcon2Click="MainController_CircleIcon2Click" />
         </Grid>
     </Grid>
 </Window>

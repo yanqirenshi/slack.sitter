@@ -8,6 +8,24 @@
     mc:Ignorable="d">
 
     <Grid>
+        <views:UserPopupView
+            x:Name="UserPopupBorder"
+            HorizontalAlignment="Left"
+            VerticalAlignment="Top"
+            Visibility="Collapsed" />
+
+        <views:LogPopupView
+            x:Name="DataFetchPopupBorder"
+            HorizontalAlignment="Left"
+            VerticalAlignment="Top"
+            Visibility="Collapsed" />
+
+        <views:LogPopupView
+            x:Name="ActivityLogPopupBorder"
+            HorizontalAlignment="Left"
+            VerticalAlignment="Top"
+            Visibility="Collapsed" />
+
         <views:CircleActionButtonView
             x:Name="LogIconButton"
             HorizontalAlignment="Center"
