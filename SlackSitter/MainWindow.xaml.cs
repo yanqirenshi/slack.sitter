@@ -44,6 +44,7 @@ namespace SlackSitter
         private readonly SettingsService _settingsService;
         private readonly HttpClient _httpClient;
         private readonly DispatcherTimer _autoRefreshTimer;
+        private readonly HashSet<string> _allUnarchivedChannelNames = new(StringComparer.OrdinalIgnoreCase);
         private string? _currentUserId;
         private string? _currentUserName;
         private ObservableCollection<ChannelWithMessages> _channelsWithMessages;
@@ -824,8 +825,10 @@ namespace SlackSitter
             try
             {
                 _allChannels.Clear();
+                _allUnarchivedChannelNames.Clear();
                 _channelsWithMessages.Clear();
                 ChannelBoard.SetItemsSource(_channelsWithMessages);
+                MainController.SetAvailableChannels(Array.Empty<string>());
 
                 var totalChannelsCount = 0;
                 var totalTimesChannelsCount = 0;
@@ -835,6 +838,13 @@ namespace SlackSitter
                 {
                     totalChannelsCount += channelBatch.Count;
                     AddLog($"チャンネルを {channelBatch.Count} 件取得 (累計: {totalChannelsCount} 件)");
+
+                    foreach (var channelName in channelBatch
+                        .Where(c => !c.IsArchived && !string.IsNullOrWhiteSpace(c.Name))
+                        .Select(c => c.Name!))
+                    {
+                        _allUnarchivedChannelNames.Add(channelName);
+                    }
 
                     var timesChannelBatch = channelBatch
                         .Where(c => c.Name != null && c.Name.StartsWith("times") && !c.IsArchived)
@@ -866,6 +876,7 @@ namespace SlackSitter
 
                 AddLog($"取得したチャンネル数: {totalChannelsCount}");
                 AddLog($"#times* チャンネル数: {totalTimesChannelsCount}");
+                MainController.SetAvailableChannels(_allUnarchivedChannelNames);
 
                 if (totalChannelsCount == 0)
                 {
@@ -942,7 +953,6 @@ namespace SlackSitter
 
         private void MainController_PlusIconClick(object sender, RoutedEventArgs e)
         {
-            AddLog("+ ボタンは未実装です");
         }
 
         private async void UserPopupView_LogoutRequested(object sender, RoutedEventArgs e)

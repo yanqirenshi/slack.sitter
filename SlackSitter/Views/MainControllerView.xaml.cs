@@ -1,4 +1,7 @@
 using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Linq;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
@@ -10,6 +13,7 @@ namespace SlackSitter.Views
     {
         private readonly Brush _defaultAccentBrush;
         private readonly Brush _defaultPrimaryTextBrush;
+        private readonly List<string> _allAvailableChannels = new();
 
         public event RoutedEventHandler? GearIconClick;
         public event RoutedEventHandler? PlusIconClick;
@@ -20,6 +24,9 @@ namespace SlackSitter.Views
         public event TypedEventHandler<UserPopupView, string>? UpdateTokenRequested;
         public event RoutedEventHandler? LogoutRequested;
         public event RoutedEventHandler? AutoRefreshToggleRequested;
+
+        public ObservableCollection<string> FilteredAvailableChannels { get; } = new();
+        public ObservableCollection<string> SelectedChannels { get; } = new();
 
         public MainControllerView()
         {
@@ -51,6 +58,17 @@ namespace SlackSitter.Views
         {
             DataFetchPopupBorder.SetLogItemsSource(itemsSource);
             ActivityLogPopupBorder.SetLogItemsSource(itemsSource);
+        }
+
+        public void SetAvailableChannels(IEnumerable<string> channelNames)
+        {
+            _allAvailableChannels.Clear();
+            _allAvailableChannels.AddRange(channelNames
+                .Where(name => !string.IsNullOrWhiteSpace(name))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(name => name, StringComparer.OrdinalIgnoreCase));
+
+            RefreshAvailableChannels();
         }
 
         public void ShowLoadingIndicatorBusy()
@@ -124,6 +142,7 @@ namespace SlackSitter.Views
 
         public void HideAllPopups()
         {
+            PlusPopupBorder.Visibility = Visibility.Collapsed;
             UserPopupBorder.Visibility = Visibility.Collapsed;
             DataFetchPopupBorder.Visibility = Visibility.Collapsed;
             ActivityLogPopupBorder.Visibility = Visibility.Collapsed;
@@ -153,6 +172,9 @@ namespace SlackSitter.Views
             HideUserActionButtons();
             SetFilterButtonState(false, false);
             UserPopupBorder.Reset();
+            SelectedChannels.Clear();
+            PlusChannelFilterTextBox.Text = string.Empty;
+            RefreshAvailableChannels();
             HideAllPopups();
             LogIconButton.Visibility = Visibility.Collapsed;
             LoadingIndicatorButton.Visibility = Visibility.Collapsed;
@@ -193,7 +215,47 @@ namespace SlackSitter.Views
 
         private void PlusIconButton_Click(object sender, RoutedEventArgs e)
         {
+            TogglePopup(PlusPopupBorder, sender as CircleActionButtonView, UserPopupBorder, DataFetchPopupBorder, ActivityLogPopupBorder);
             PlusIconClick?.Invoke(sender, e);
+        }
+
+        private void PlusChannelFilterTextBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            RefreshAvailableChannels();
+        }
+
+        private void AvailableChannelsListView_DoubleTapped(object sender, Microsoft.UI.Xaml.Input.DoubleTappedRoutedEventArgs e)
+        {
+            if (AvailableChannelsListView.SelectedItem is not string channelName)
+            {
+                return;
+            }
+
+            if (SelectedChannels.Any(name => string.Equals(name, channelName, StringComparison.OrdinalIgnoreCase)))
+            {
+                return;
+            }
+
+            SelectedChannels.Add(channelName);
+            AvailableChannelsListView.SelectedItem = null;
+            RefreshAvailableChannels();
+        }
+
+        private void SelectedChannelsListView_DoubleTapped(object sender, Microsoft.UI.Xaml.Input.DoubleTappedRoutedEventArgs e)
+        {
+            if (SelectedChannelsListView.SelectedItem is not string channelName)
+            {
+                return;
+            }
+
+            SelectedChannels.Remove(channelName);
+            SelectedChannelsListView.SelectedItem = null;
+            RefreshAvailableChannels();
+        }
+
+        private void PlusCancelButton_Click(object sender, RoutedEventArgs e)
+        {
+            PlusPopupBorder.Visibility = Visibility.Collapsed;
         }
 
         private void CircleIcon1Button_Click(object sender, RoutedEventArgs e)
@@ -281,6 +343,9 @@ namespace SlackSitter.Views
 
             switch (popup)
             {
+                case PopupBubbleView popupBubble:
+                    popupBubble.PointerHorizontalOffset = pointerOffset;
+                    break;
                 case UserPopupView userPopup:
                     userPopup.SetPointerHorizontalOffset(pointerOffset);
                     break;
@@ -296,6 +361,23 @@ namespace SlackSitter.Views
             var width = element.ActualWidth > 0 ? element.ActualWidth : element.DesiredSize.Width;
             var height = element.ActualHeight > 0 ? element.ActualHeight : element.DesiredSize.Height;
             return new Size(width, height);
+        }
+
+        private void RefreshAvailableChannels()
+        {
+            var filter = PlusChannelFilterTextBox?.Text?.Trim() ?? string.Empty;
+            var selectedChannelSet = SelectedChannels.ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            var filteredChannels = _allAvailableChannels
+                .Where(name => !selectedChannelSet.Contains(name))
+                .Where(name => string.IsNullOrWhiteSpace(filter) || name.Contains(filter, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            FilteredAvailableChannels.Clear();
+            foreach (var channelName in filteredChannels)
+            {
+                FilteredAvailableChannels.Add(channelName);
+            }
         }
 
         private static Brush GetThemeBrush(string resourceKey, Brush fallback)
