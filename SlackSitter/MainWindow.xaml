@@ -27,31 +27,12 @@
             AuthenticateRequested="AuthenticationView_AuthenticateRequested" />
 
         <Grid x:Name="MainPanel" Visibility="Collapsed">
-            <!-- チャンネル表示エリア -->
-            <ScrollViewer 
-                x:Name="ChannelScrollViewer"
-                HorizontalScrollBarVisibility="Auto" 
-                VerticalScrollBarVisibility="Disabled"
-                Padding="20"
-                SizeChanged="ChannelScrollViewer_SizeChanged">
-                <ItemsControl x:Name="TimesChannelsItemsControl">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <StackPanel Orientation="Horizontal" Spacing="16" />
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <views:ChannelCardView
-                                Channel="{Binding}"
-                                MessageRichTextBlockLoadedRequested="ChannelCardView_MessageRichTextBlockLoadedRequested"
-                                MessageAvatarBorderLoadedRequested="ChannelCardView_MessageAvatarBorderLoadedRequested"
-                                ReactionBorderLoadedRequested="ChannelCardView_ReactionBorderLoadedRequested"
-                                ShowImageRequested="ChannelCardView_ShowImageRequested" />
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </ScrollViewer>
+            <views:ChannelBoardView
+                x:Name="ChannelBoard"
+                MessageRichTextBlockLoadedRequested="ChannelCardView_MessageRichTextBlockLoadedRequested"
+                MessageAvatarBorderLoadedRequested="ChannelCardView_MessageAvatarBorderLoadedRequested"
+                ReactionBorderLoadedRequested="ChannelCardView_ReactionBorderLoadedRequested"
+                ShowImageRequested="ChannelCardView_ShowImageRequested" />
 
             <views:StatusPanelView x:Name="StatusPanel" />
 

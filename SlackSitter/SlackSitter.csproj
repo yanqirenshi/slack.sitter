@@ -14,6 +14,7 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
+    <Page Remove="Views\ChannelBoardView.xaml" />
     <Page Remove="Views\MainControllerView.xaml" />
     <Page Remove="Views\PopupBubbleView.xaml" />
     <Page Remove="Views\StatusPanelView.xaml" />
@@ -47,6 +48,10 @@
     <PackageReference Include="SlackNet" Version="0.17.9" />
   </ItemGroup>
   <ItemGroup>
+    <Page Include="Views\ChannelBoardView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
     <Page Include="Views\StatusPanelView.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -61,6 +66,9 @@
     </Page>
   </ItemGroup>
   <ItemGroup>
+    <None Update="Views\ChannelBoardView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </None>
     <None Update="Views\StatusPanelView.xaml">
       <Generator>MSBuild:Compile</Generator>
     </None>

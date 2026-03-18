@@ -92,31 +92,6 @@ namespace SlackSitter
             LoadSettingsAndAuthenticate();
         }
 
-        private void ChannelScrollViewer_SizeChanged(object sender, SizeChangedEventArgs e)
-        {
-            if (TimesChannelsItemsControl.ItemsPanelRoot is StackPanel panel)
-            {
-                var scrollViewer = sender as ScrollViewer;
-                if (scrollViewer != null)
-                {
-                    var availableHeight = scrollViewer.ActualHeight - 40;
-                    panel.Height = availableHeight;
-
-                    for (int i = 0; i < TimesChannelsItemsControl.Items.Count; i++)
-                    {
-                        var container = TimesChannelsItemsControl.ContainerFromIndex(i);
-                        if (container != null)
-                        {
-                            if (VisualTreeHelper.GetChild(container, 0) is FrameworkElement element)
-                            {
-                                element.Height = availableHeight;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
         private void AddLog(string message)
         {
             var timestamp = DateTime.Now.ToString("HH:mm:ss");
@@ -177,7 +152,7 @@ namespace SlackSitter
                 .ToList();
 
             _channelsWithMessages = new ObservableCollection<ChannelWithMessages>(filteredChannels);
-            TimesChannelsItemsControl.ItemsSource = _channelsWithMessages;
+            ChannelBoard.SetItemsSource(_channelsWithMessages);
         }
 
         private void MessageRichTextBlock_Loaded(object sender, RoutedEventArgs e)
@@ -946,7 +921,7 @@ namespace SlackSitter
             {
                 _allChannels.Clear();
                 _channelsWithMessages.Clear();
-                TimesChannelsItemsControl.ItemsSource = _channelsWithMessages;
+                ChannelBoard.SetItemsSource(_channelsWithMessages);
 
                 var totalChannelsCount = 0;
                 var totalTimesChannelsCount = 0;
