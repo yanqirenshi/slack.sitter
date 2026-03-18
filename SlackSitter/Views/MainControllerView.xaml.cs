@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.Linq;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -52,6 +53,8 @@ namespace SlackSitter.Views
             DataFetchPopupBorder.CopyLogRequested += LogPopupBorder_CopyLogRequested;
             DataFetchPopupBorder.RefreshRequested += LogPopupBorder_RefreshRequested;
             ActivityLogPopupBorder.CopyLogRequested += LogPopupBorder_CopyLogRequested;
+            SelectedChannels.CollectionChanged += SelectedChannels_CollectionChanged;
+            UpdateAddButtonState();
         }
 
         public void SetLogItemsSource(object itemsSource)
@@ -253,6 +256,11 @@ namespace SlackSitter.Views
             RefreshAvailableChannels();
         }
 
+        private void SelectedChannels_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+        {
+            UpdateAddButtonState();
+        }
+
         private void PlusCancelButton_Click(object sender, RoutedEventArgs e)
         {
             PlusPopupBorder.Visibility = Visibility.Collapsed;
@@ -378,6 +386,11 @@ namespace SlackSitter.Views
             {
                 FilteredAvailableChannels.Add(channelName);
             }
+        }
+
+        private void UpdateAddButtonState()
+        {
+            AddChannelsButton.IsEnabled = SelectedChannels.Count > 0;
         }
 
         private static Brush GetThemeBrush(string resourceKey, Brush fallback)

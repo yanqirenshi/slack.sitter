@@ -82,6 +82,7 @@
                         Click="PlusCancelButton_Click" />
 
                     <Button
+                        x:Name="AddChannelsButton"
                         Grid.Row="2"
                         Grid.Column="1"
                         Content="追加"
