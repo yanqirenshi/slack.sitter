@@ -662,9 +662,43 @@ namespace SlackSitter
             }
             else
             {
-                LogPopupBorder.Visibility = Visibility.Visible;
                 UserPopupBorder.Visibility = Visibility.Collapsed;
+
+                if (sender is CircleActionButtonView button)
+                {
+                    ShowPopupAtButton(LogPopupBorder, button);
+                }
+                else
+                {
+                    LogPopupBorder.Visibility = Visibility.Visible;
+                }
             }
+        }
+
+        private void ShowPopupAtButton(FrameworkElement popup, CircleActionButtonView button)
+        {
+            popup.Visibility = Visibility.Visible;
+            popup.HorizontalAlignment = HorizontalAlignment.Left;
+            popup.VerticalAlignment = VerticalAlignment.Top;
+            popup.UpdateLayout();
+
+            var popupSize = MeasureElement(popup);
+            var buttonOrigin = button.TransformToVisual(MainPanel).TransformPoint(new Point(0, 0));
+            var left = Math.Clamp(
+                buttonOrigin.X + (button.ActualWidth - popupSize.Width) / 2,
+                0,
+                Math.Max(0, MainPanel.ActualWidth - popupSize.Width));
+            var top = Math.Max(0, buttonOrigin.Y - popupSize.Height);
+
+            popup.Margin = new Thickness(left, top, 0, 0);
+        }
+
+        private static Size MeasureElement(FrameworkElement element)
+        {
+            element.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            var width = element.ActualWidth > 0 ? element.ActualWidth : element.DesiredSize.Width;
+            var height = element.ActualHeight > 0 ? element.ActualHeight : element.DesiredSize.Height;
+            return new Size(width, height);
         }
 
         private void LogPopupView_CopyLogRequested(object sender, RoutedEventArgs e)
@@ -996,8 +1030,16 @@ namespace SlackSitter
             }
             else
             {
-                UserPopupBorder.Visibility = Visibility.Visible;
                 LogPopupBorder.Visibility = Visibility.Collapsed;
+
+                if (sender is CircleActionButtonView button)
+                {
+                    ShowPopupAtButton(UserPopupBorder, button);
+                }
+                else
+                {
+                    UserPopupBorder.Visibility = Visibility.Visible;
+                }
             }
         }
 

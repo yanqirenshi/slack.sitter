@@ -89,32 +89,32 @@ namespace SlackSitter.Views
 
         private void LoadingIndicatorButton_Click(object sender, RoutedEventArgs e)
         {
-            LoadingIndicatorClick?.Invoke(this, e);
+            LoadingIndicatorClick?.Invoke(sender, e);
         }
 
         private void UserAvatarButton_Click(object sender, RoutedEventArgs e)
         {
-            UserAvatarClick?.Invoke(this, e);
+            UserAvatarClick?.Invoke(sender, e);
         }
 
         private void GearIconButton_Click(object sender, RoutedEventArgs e)
         {
-            GearIconClick?.Invoke(this, e);
+            GearIconClick?.Invoke(sender, e);
         }
 
         private void PlusIconButton_Click(object sender, RoutedEventArgs e)
         {
-            PlusIconClick?.Invoke(this, e);
+            PlusIconClick?.Invoke(sender, e);
         }
 
         private void CircleIcon1Button_Click(object sender, RoutedEventArgs e)
         {
-            CircleIcon1Click?.Invoke(this, e);
+            CircleIcon1Click?.Invoke(sender, e);
         }
 
         private void CircleIcon2Button_Click(object sender, RoutedEventArgs e)
         {
-            CircleIcon2Click?.Invoke(this, e);
+            CircleIcon2Click?.Invoke(sender, e);
         }
 
         private static Brush GetThemeBrush(string resourceKey, Brush fallback)
