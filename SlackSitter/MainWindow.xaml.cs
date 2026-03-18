@@ -49,6 +49,7 @@ namespace SlackSitter
         private ObservableCollection<ChannelWithMessages> _channelsWithMessages;
         private ObservableCollection<string> _logMessages;
         private readonly List<ChannelWithMessages> _allChannels = new List<ChannelWithMessages>();
+        private readonly LogPopupView _activityLogPopupBorder;
         private Dictionary<string, string> _customEmojiMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         private ChannelDisplayFilter _currentChannelDisplayFilter = ChannelDisplayFilter.JoinedOnly;
         private bool _isAutoRefreshEnabled = true;
@@ -67,7 +68,22 @@ namespace SlackSitter
             _autoRefreshTimer.Tick += AutoRefreshTimer_Tick;
             _channelsWithMessages = new ObservableCollection<ChannelWithMessages>();
             _logMessages = new ObservableCollection<string>();
+            _activityLogPopupBorder = new LogPopupView();
             LogPopupBorder.SetLogItemsSource(_logMessages);
+            LogPopupBorder.SetTitle("データ取得");
+            LogPopupBorder.SetCopyVisible(false);
+            LogPopupBorder.SetLogContentVisible(false);
+            LogPopupBorder.SetRefreshVisible(true);
+            _activityLogPopupBorder.SetLogItemsSource(_logMessages);
+            _activityLogPopupBorder.SetTitle("ログ");
+            _activityLogPopupBorder.SetCopyVisible(true);
+            _activityLogPopupBorder.SetLogContentVisible(true);
+            _activityLogPopupBorder.SetRefreshVisible(false);
+            _activityLogPopupBorder.Visibility = Visibility.Collapsed;
+            _activityLogPopupBorder.CopyLogRequested += LogPopupView_CopyLogRequested;
+            _activityLogPopupBorder.HorizontalAlignment = HorizontalAlignment.Left;
+            _activityLogPopupBorder.VerticalAlignment = VerticalAlignment.Top;
+            MainPanel.Children.Add(_activityLogPopupBorder);
             UpdateChannelFilterButtonState();
             UpdateAutoRefreshTimerState();
 
@@ -654,23 +670,36 @@ namespace SlackSitter
             return batchResults.ToList();
         }
 
+        private void MainController_LogIconClick(object sender, RoutedEventArgs e)
+        {
+            TogglePopup(_activityLogPopupBorder, sender, UserPopupBorder, LogPopupBorder);
+        }
+
         private void MainController_LoadingIndicatorClick(object sender, RoutedEventArgs e)
         {
-            if (LogPopupBorder.Visibility == Visibility.Visible)
+            TogglePopup(LogPopupBorder, sender, UserPopupBorder, _activityLogPopupBorder);
+        }
+
+        private void TogglePopup(FrameworkElement popup, object sender, params FrameworkElement[] otherPopups)
+        {
+            if (popup.Visibility == Visibility.Visible)
             {
-                LogPopupBorder.Visibility = Visibility.Collapsed;
+                popup.Visibility = Visibility.Collapsed;
             }
             else
             {
-                UserPopupBorder.Visibility = Visibility.Collapsed;
+                foreach (var otherPopup in otherPopups)
+                {
+                    otherPopup.Visibility = Visibility.Collapsed;
+                }
 
                 if (sender is CircleActionButtonView button)
                 {
-                    ShowPopupAtButton(LogPopupBorder, button);
+                    ShowPopupAtButton(popup, button);
                 }
                 else
                 {
-                    LogPopupBorder.Visibility = Visibility.Visible;
+                    popup.Visibility = Visibility.Visible;
                 }
             }
         }
@@ -684,13 +713,31 @@ namespace SlackSitter
 
             var popupSize = MeasureElement(popup);
             var buttonOrigin = button.TransformToVisual(MainPanel).TransformPoint(new Point(0, 0));
+            var buttonCenterX = buttonOrigin.X + (button.ActualWidth / 2);
             var left = Math.Clamp(
-                buttonOrigin.X + (button.ActualWidth - popupSize.Width) / 2,
+                buttonCenterX - (popupSize.Width / 2),
                 0,
                 Math.Max(0, MainPanel.ActualWidth - popupSize.Width));
             var top = Math.Max(0, buttonOrigin.Y - popupSize.Height);
 
             popup.Margin = new Thickness(left, top, 0, 0);
+            SetPopupPointerOffset(popup, popupSize.Width, buttonCenterX - left);
+        }
+
+        private static void SetPopupPointerOffset(FrameworkElement popup, double popupWidth, double pointerCenterX)
+        {
+            var clampedPointerCenterX = Math.Clamp(pointerCenterX, 20d, Math.Max(20d, popupWidth - 20d));
+            var pointerOffset = clampedPointerCenterX - (popupWidth / 2);
+
+            switch (popup)
+            {
+                case UserPopupView userPopup:
+                    userPopup.SetPointerHorizontalOffset(pointerOffset);
+                    break;
+                case LogPopupView logPopup:
+                    logPopup.SetPointerHorizontalOffset(pointerOffset);
+                    break;
+            }
         }
 
         private static Size MeasureElement(FrameworkElement element)
@@ -1093,6 +1140,8 @@ namespace SlackSitter
             MainPanel.Visibility = Visibility.Collapsed;
             AuthenticationPanel.Visibility = Visibility.Visible;
             MainController.Reset();
+            LogPopupBorder.Visibility = Visibility.Collapsed;
+            _activityLogPopupBorder.Visibility = Visibility.Collapsed;
             UserPopupBorder.Visibility = Visibility.Collapsed;
             UpdateAutoRefreshTimerState();
         }

@@ -24,6 +24,12 @@ namespace SlackSitter.Views
         public static readonly DependencyProperty BubblePaddingProperty =
             DependencyProperty.Register(nameof(BubblePadding), typeof(Thickness), typeof(PopupBubbleView), new PropertyMetadata(new Thickness(16)));
 
+        public static readonly DependencyProperty BubbleWidthProperty =
+            DependencyProperty.Register(nameof(BubbleWidth), typeof(double), typeof(PopupBubbleView), new PropertyMetadata(double.NaN));
+
+        public static readonly DependencyProperty BubbleHeightProperty =
+            DependencyProperty.Register(nameof(BubbleHeight), typeof(double), typeof(PopupBubbleView), new PropertyMetadata(double.NaN));
+
         public static readonly DependencyProperty BubbleMinWidthProperty =
             DependencyProperty.Register(nameof(BubbleMinWidth), typeof(double), typeof(PopupBubbleView), new PropertyMetadata(0d));
 
@@ -32,6 +38,9 @@ namespace SlackSitter.Views
 
         public static readonly DependencyProperty PointerStrokeThicknessProperty =
             DependencyProperty.Register(nameof(PointerStrokeThickness), typeof(double), typeof(PopupBubbleView), new PropertyMetadata(1d));
+
+        public static readonly DependencyProperty PointerHorizontalOffsetProperty =
+            DependencyProperty.Register(nameof(PointerHorizontalOffset), typeof(double), typeof(PopupBubbleView), new PropertyMetadata(0d));
 
         public PopupBubbleView()
         {
@@ -74,6 +83,18 @@ namespace SlackSitter.Views
             set => SetValue(BubblePaddingProperty, value);
         }
 
+        public double BubbleWidth
+        {
+            get => (double)GetValue(BubbleWidthProperty);
+            set => SetValue(BubbleWidthProperty, value);
+        }
+
+        public double BubbleHeight
+        {
+            get => (double)GetValue(BubbleHeightProperty);
+            set => SetValue(BubbleHeightProperty, value);
+        }
+
         public double BubbleMinWidth
         {
             get => (double)GetValue(BubbleMinWidthProperty);
@@ -90,6 +111,12 @@ namespace SlackSitter.Views
         {
             get => (double)GetValue(PointerStrokeThicknessProperty);
             set => SetValue(PointerStrokeThicknessProperty, value);
+        }
+
+        public double PointerHorizontalOffset
+        {
+            get => (double)GetValue(PointerHorizontalOffsetProperty);
+            set => SetValue(PointerHorizontalOffsetProperty, value);
         }
     }
 }

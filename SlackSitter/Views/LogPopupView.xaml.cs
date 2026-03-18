@@ -18,10 +18,35 @@ namespace SlackSitter.Views
             LogItemsControl.ItemsSource = itemsSource;
         }
 
+        public void SetTitle(string title)
+        {
+            PopupTitleText.Text = title;
+        }
+
+        public void SetCopyVisible(bool isVisible)
+        {
+            CopyLogButton.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        public void SetLogContentVisible(bool isVisible)
+        {
+            LogContentPanel.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        public void SetRefreshVisible(bool isVisible)
+        {
+            RefreshDataButton.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
+        }
+
         public void SetRefreshBusy(bool isBusy)
         {
             RefreshDataButton.IsEnabled = !isBusy;
             RefreshDataButton.Content = isBusy ? "再取得中..." : "再取得";
+        }
+
+        public void SetPointerHorizontalOffset(double offset)
+        {
+            PopupBubbleRoot.PointerHorizontalOffset = offset;
         }
 
         private void CopyLogButton_Click(object sender, RoutedEventArgs e)

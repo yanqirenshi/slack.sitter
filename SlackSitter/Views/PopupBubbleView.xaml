@@ -14,6 +14,8 @@
             BorderThickness="{Binding BubbleBorderThickness, ElementName=Root}"
             CornerRadius="{Binding BubbleCornerRadius, ElementName=Root}"
             Padding="{Binding BubblePadding, ElementName=Root}"
+            Width="{Binding BubbleWidth, ElementName=Root}"
+            Height="{Binding BubbleHeight, ElementName=Root}"
             MinWidth="{Binding BubbleMinWidth, ElementName=Root}"
             MaxWidth="{Binding BubbleMaxWidth, ElementName=Root}"
             Margin="0,0,0,15">
@@ -27,6 +29,10 @@
             StrokeThickness="{Binding PointerStrokeThickness, ElementName=Root}"
             HorizontalAlignment="Center"
             VerticalAlignment="Bottom"
-            Margin="0,0,0,0" />
+            Margin="0,0,0,0">
+            <Polygon.RenderTransform>
+                <TranslateTransform X="{Binding PointerHorizontalOffset, ElementName=Root}" />
+            </Polygon.RenderTransform>
+        </Polygon>
     </Grid>
 </UserControl>

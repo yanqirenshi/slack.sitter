@@ -80,6 +80,11 @@ namespace SlackSitter.Views
             HideTokenStatus();
         }
 
+        public void SetPointerHorizontalOffset(double offset)
+        {
+            PopupBubbleRoot.PointerHorizontalOffset = offset;
+        }
+
         private void PopupUpdateTokenButton_Click(object sender, RoutedEventArgs e)
         {
             var newAccessToken = PopupAccessTokenPasswordBox.Password;

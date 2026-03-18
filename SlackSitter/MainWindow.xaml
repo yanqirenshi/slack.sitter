@@ -76,6 +76,7 @@
 
             <views:MainControllerView
                 x:Name="MainController"
+                LogIconClick="MainController_LogIconClick"
                 LoadingIndicatorClick="MainController_LoadingIndicatorClick"
                 GearIconClick="MainController_GearIconClick"
                 UserAvatarClick="MainController_UserAvatarClick"

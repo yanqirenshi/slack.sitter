@@ -9,6 +9,16 @@
 
     <Grid>
         <views:CircleActionButtonView
+            x:Name="LogIconButton"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Bottom"
+            Margin="-236,0,0,20"
+            InnerBorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
+            CenterGlyph="&#xEA37;"
+            Click="LogIconButton_Click"
+            Visibility="Collapsed" />
+
+        <views:CircleActionButtonView
             x:Name="LoadingIndicatorButton"
             HorizontalAlignment="Center"
             VerticalAlignment="Bottom"

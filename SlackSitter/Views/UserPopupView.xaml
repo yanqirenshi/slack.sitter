@@ -8,6 +8,7 @@
     mc:Ignorable="d">
 
     <views:PopupBubbleView
+        x:Name="PopupBubbleRoot"
         BubbleBackground="{ThemeResource OpaquePopupBackgroundBrush}"
         BubbleBorderBrush="{ThemeResource OpaquePopupBorderBrush}"
         BubbleMinWidth="250">

@@ -10,6 +10,7 @@ namespace SlackSitter.Views
         private readonly Brush _defaultPrimaryTextBrush;
 
         public event RoutedEventHandler? LoadingIndicatorClick;
+        public event RoutedEventHandler? LogIconClick;
         public event RoutedEventHandler? GearIconClick;
         public event RoutedEventHandler? UserAvatarClick;
         public event RoutedEventHandler? PlusIconClick;
@@ -25,6 +26,7 @@ namespace SlackSitter.Views
 
         public void ShowLoadingIndicatorBusy()
         {
+            LogIconButton.Visibility = Visibility.Visible;
             LoadingIndicatorButton.Visibility = Visibility.Visible;
             LoadingIndicatorButton.InnerBorderBrush = new SolidColorBrush(Microsoft.UI.Colors.Red);
             LoadingIndicatorButton.ContentForeground = new SolidColorBrush(Microsoft.UI.Colors.Red);
@@ -32,6 +34,7 @@ namespace SlackSitter.Views
 
         public void SetLoadingIndicatorIdle()
         {
+            LogIconButton.Visibility = Visibility.Visible;
             LoadingIndicatorButton.Visibility = Visibility.Visible;
             LoadingIndicatorButton.InnerBorderBrush = new SolidColorBrush(Microsoft.UI.Colors.Gray);
             LoadingIndicatorButton.ContentForeground = new SolidColorBrush(Microsoft.UI.Colors.Gray);
@@ -71,6 +74,7 @@ namespace SlackSitter.Views
             SetUserAvatarImage(null);
             HideUserActionButtons();
             SetFilterButtonState(false, false);
+            LogIconButton.Visibility = Visibility.Collapsed;
             LoadingIndicatorButton.Visibility = Visibility.Collapsed;
             LoadingIndicatorButton.InnerBorderBrush = _defaultAccentBrush;
             LoadingIndicatorButton.ContentForeground = new SolidColorBrush(Microsoft.UI.Colors.Gray);
@@ -85,6 +89,11 @@ namespace SlackSitter.Views
 
             CircleIcon2Button.InnerBorderBrush = isNotJoinedOnlySelected ? selectedBrush : _defaultAccentBrush;
             CircleIcon2Button.ContentForeground = isNotJoinedOnlySelected ? selectedBrush : _defaultPrimaryTextBrush;
+        }
+
+        private void LogIconButton_Click(object sender, RoutedEventArgs e)
+        {
+            LogIconClick?.Invoke(sender, e);
         }
 
         private void LoadingIndicatorButton_Click(object sender, RoutedEventArgs e)
