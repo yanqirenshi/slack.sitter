@@ -729,7 +729,7 @@ namespace SlackSitter
                 _currentChannelDisplayFilter == ChannelDisplayFilter.CustomOnly);
         }
 
-        private void MainController_CircleIcon1Click(object sender, RoutedEventArgs e)
+        private async void MainController_CircleIcon1Click(object sender, RoutedEventArgs e)
         {
             _currentChannelDisplayFilter = _currentChannelDisplayFilter == ChannelDisplayFilter.JoinedOnly
                 ? ChannelDisplayFilter.All
@@ -737,12 +737,13 @@ namespace SlackSitter
 
             RefreshDisplayedChannelsFromFilter();
             UpdateChannelFilterButtonState();
+            await SaveCustomBoardStateAsync();
             AddLog(_currentChannelDisplayFilter == ChannelDisplayFilter.JoinedOnly
                 ? "参加中チャンネルのみ表示に切り替えました"
                 : "すべてのチャンネル表示に戻しました");
         }
 
-        private void MainController_CircleIcon2Click(object sender, RoutedEventArgs e)
+        private async void MainController_CircleIcon2Click(object sender, RoutedEventArgs e)
         {
             _currentChannelDisplayFilter = _currentChannelDisplayFilter == ChannelDisplayFilter.NotJoinedOnly
                 ? ChannelDisplayFilter.All
@@ -750,12 +751,13 @@ namespace SlackSitter
 
             RefreshDisplayedChannelsFromFilter();
             UpdateChannelFilterButtonState();
+            await SaveCustomBoardStateAsync();
             AddLog(_currentChannelDisplayFilter == ChannelDisplayFilter.NotJoinedOnly
                 ? "未参加チャンネルのみ表示に切り替えました"
                 : "すべてのチャンネル表示に戻しました");
         }
 
-        private void MainController_CustomChannelClick(object sender, RoutedEventArgs e)
+        private async void MainController_CustomChannelClick(object sender, RoutedEventArgs e)
         {
             _currentChannelDisplayFilter = _currentChannelDisplayFilter == ChannelDisplayFilter.CustomOnly
                 ? ChannelDisplayFilter.All
@@ -763,6 +765,7 @@ namespace SlackSitter
 
             RefreshDisplayedChannelsFromFilter();
             UpdateChannelFilterButtonState();
+            await SaveCustomBoardStateAsync();
             AddLog(_currentChannelDisplayFilter == ChannelDisplayFilter.CustomOnly
                 ? "追加チャンネル表示に切り替えました"
                 : "すべてのチャンネル表示に戻しました");
@@ -1206,6 +1209,9 @@ namespace SlackSitter
 
             MainController.SetSelectedChannels(selectedChannels);
             MainController.SetCustomChannelButtonVisible(state.IsVisible && selectedChannels.Count > 0);
+            _currentChannelDisplayFilter = ParsePersistedFilter(state.ActiveFilter, selectedChannels.Count > 0);
+            UpdateChannelFilterButtonState();
+            RefreshDisplayedChannelsFromFilter();
         }
 
         private async Task RestorePersistedCustomBoardAsync(string? workspaceUrl)
@@ -1220,6 +1226,7 @@ namespace SlackSitter
                     _currentChannelDisplayFilter = ChannelDisplayFilter.JoinedOnly;
                     RefreshDisplayedChannelsFromFilter();
                     UpdateChannelFilterButtonState();
+                    await SaveCustomBoardStateAsync();
                 }
 
                 return;
@@ -1245,7 +1252,23 @@ namespace SlackSitter
         {
             return _customBoardStorageService.SaveAsync(
                 MainController.SelectedChannelNames,
-                MainController.SelectedChannelNames.Count > 0);
+                MainController.SelectedChannelNames.Count > 0,
+                _currentChannelDisplayFilter.ToString());
+        }
+
+        private static ChannelDisplayFilter ParsePersistedFilter(string? activeFilter, bool hasCustomChannels)
+        {
+            if (!Enum.TryParse<ChannelDisplayFilter>(activeFilter, true, out var filter))
+            {
+                return ChannelDisplayFilter.JoinedOnly;
+            }
+
+            if (filter == ChannelDisplayFilter.CustomOnly && !hasCustomChannels)
+            {
+                return ChannelDisplayFilter.JoinedOnly;
+            }
+
+            return filter;
         }
     }
 }

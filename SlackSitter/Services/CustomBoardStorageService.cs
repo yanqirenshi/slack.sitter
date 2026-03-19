@@ -15,6 +15,7 @@ namespace SlackSitter.Services
         public class CustomBoardState
         {
             public bool IsVisible { get; set; }
+            public string ActiveFilter { get; set; } = "JoinedOnly";
             public List<string> SelectedChannels { get; set; } = new();
         }
 
@@ -45,7 +46,7 @@ namespace SlackSitter.Services
             }
         }
 
-        public async Task SaveAsync(IEnumerable<string> selectedChannels, bool isVisible)
+        public async Task SaveAsync(IEnumerable<string> selectedChannels, bool isVisible, string activeFilter)
         {
             try
             {
@@ -58,6 +59,7 @@ namespace SlackSitter.Services
                 var state = new CustomBoardState
                 {
                     IsVisible = isVisible,
+                    ActiveFilter = string.IsNullOrWhiteSpace(activeFilter) ? "JoinedOnly" : activeFilter,
                     SelectedChannels = selectedChannels
                         .Where(name => !string.IsNullOrWhiteSpace(name))
                         .Distinct(StringComparer.OrdinalIgnoreCase)
