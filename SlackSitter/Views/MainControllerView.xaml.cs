@@ -35,12 +35,6 @@ namespace SlackSitter.Views
             _defaultAccentBrush = GetThemeBrush("AccentFillColorDefaultBrush", new SolidColorBrush(Microsoft.UI.Colors.Blue));
             _defaultPrimaryTextBrush = GetThemeBrush("TextFillColorPrimaryBrush", new SolidColorBrush(Microsoft.UI.Colors.Black));
 
-            DataFetchPopupBorder.SetTitle("データ取得");
-            DataFetchPopupBorder.SetCopyVisible(false);
-            DataFetchPopupBorder.SetLogContentVisible(false);
-            DataFetchPopupBorder.SetRefreshVisible(true);
-            DataFetchPopupBorder.Visibility = Visibility.Collapsed;
-
             ActivityLogPopupBorder.SetTitle("ログ");
             ActivityLogPopupBorder.SetCopyVisible(true);
             ActivityLogPopupBorder.SetLogContentVisible(true);
@@ -50,8 +44,6 @@ namespace SlackSitter.Views
             UserPopupBorder.UpdateTokenRequested += UserPopupBorder_UpdateTokenRequested;
             UserPopupBorder.LogoutRequested += UserPopupBorder_LogoutRequested;
             UserPopupBorder.AutoRefreshToggleRequested += UserPopupBorder_AutoRefreshToggleRequested;
-            DataFetchPopupBorder.CopyLogRequested += LogPopupBorder_CopyLogRequested;
-            DataFetchPopupBorder.RefreshRequested += LogPopupBorder_RefreshRequested;
             ActivityLogPopupBorder.CopyLogRequested += LogPopupBorder_CopyLogRequested;
             SelectedChannels.CollectionChanged += SelectedChannels_CollectionChanged;
             UpdateAddButtonState();
@@ -59,7 +51,6 @@ namespace SlackSitter.Views
 
         public void SetLogItemsSource(object itemsSource)
         {
-            DataFetchPopupBorder.SetLogItemsSource(itemsSource);
             ActivityLogPopupBorder.SetLogItemsSource(itemsSource);
         }
 
@@ -147,7 +138,6 @@ namespace SlackSitter.Views
         {
             PlusPopupBorder.Visibility = Visibility.Collapsed;
             UserPopupBorder.Visibility = Visibility.Collapsed;
-            DataFetchPopupBorder.Visibility = Visibility.Collapsed;
             ActivityLogPopupBorder.Visibility = Visibility.Collapsed;
         }
 
@@ -198,17 +188,18 @@ namespace SlackSitter.Views
 
         private void LogIconButton_Click(object sender, RoutedEventArgs e)
         {
-            TogglePopup(ActivityLogPopupBorder, sender as CircleActionButtonView, UserPopupBorder, DataFetchPopupBorder);
+            TogglePopup(ActivityLogPopupBorder, sender as CircleActionButtonView, UserPopupBorder, PlusPopupBorder);
         }
 
         private void LoadingIndicatorButton_Click(object sender, RoutedEventArgs e)
         {
-            TogglePopup(DataFetchPopupBorder, sender as CircleActionButtonView, UserPopupBorder, ActivityLogPopupBorder);
+            HideAllPopups();
+            RefreshRequested?.Invoke(sender, e);
         }
 
         private void UserAvatarButton_Click(object sender, RoutedEventArgs e)
         {
-            TogglePopup(UserPopupBorder, sender as CircleActionButtonView, DataFetchPopupBorder, ActivityLogPopupBorder);
+            TogglePopup(UserPopupBorder, sender as CircleActionButtonView, ActivityLogPopupBorder, PlusPopupBorder);
         }
 
         private void GearIconButton_Click(object sender, RoutedEventArgs e)
@@ -218,7 +209,7 @@ namespace SlackSitter.Views
 
         private void PlusIconButton_Click(object sender, RoutedEventArgs e)
         {
-            TogglePopup(PlusPopupBorder, sender as CircleActionButtonView, UserPopupBorder, DataFetchPopupBorder, ActivityLogPopupBorder);
+            TogglePopup(PlusPopupBorder, sender as CircleActionButtonView, UserPopupBorder, ActivityLogPopupBorder);
             PlusIconClick?.Invoke(sender, e);
         }
 
@@ -294,11 +285,6 @@ namespace SlackSitter.Views
         private void LogPopupBorder_CopyLogRequested(object sender, RoutedEventArgs e)
         {
             CopyLogRequested?.Invoke(sender, e);
-        }
-
-        private void LogPopupBorder_RefreshRequested(object sender, RoutedEventArgs e)
-        {
-            RefreshRequested?.Invoke(sender, e);
         }
 
         private void TogglePopup(FrameworkElement popup, CircleActionButtonView? button, params FrameworkElement[] otherPopups)

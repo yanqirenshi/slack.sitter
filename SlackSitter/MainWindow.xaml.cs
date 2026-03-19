@@ -745,26 +745,104 @@ namespace SlackSitter
 
         private async void LogPopupView_RefreshRequested(object sender, RoutedEventArgs e)
         {
-            if (sender is not LogPopupView logPopupView)
-            {
-                return;
-            }
-
             if (!_slackService.IsAuthenticated)
             {
                 AddLog("再取得できません: 未認証です");
                 return;
             }
 
-            logPopupView.SetRefreshBusy(true);
+
+            await RefreshActiveBoardChannelsAsync();
+        }
+
+        private async Task RefreshActiveBoardChannelsAsync()
+        {
+            if (_isRefreshingData)
+            {
+                return;
+            }
+
+            var activeChannels = GetActiveBoardChannels();
+            if (activeChannels.Count == 0)
+            {
+                AddLog("再取得対象のチャンネルがありません");
+                return;
+            }
+
+            _isRefreshingData = true;
+            MainController.ShowLoadingIndicatorBusy();
 
             try
             {
-                await RefreshWorkspaceDataAsync("=== データ再取得開始 ===", "=== データ再取得完了 ===");
+                AddLog($"=== アクティブボードのデータ再取得開始 ({activeChannels.Count} チャンネル) ===");
+
+                await LoadCustomEmojiAsync();
+
+                var refreshedChannels = await LoadChannelBatchAsync(
+                    activeChannels.Select(channel => channel.Channel).ToList(),
+                    _slackService.GetWorkspaceUrl());
+
+                foreach (var refreshedChannel in refreshedChannels)
+                {
+                    UpsertChannelAcrossBoards(refreshedChannel);
+                    AddLog($"チャンネル #{refreshedChannel.Name}: {refreshedChannel.Messages.Count} 件のメッセージを再取得");
+                }
+
+                AddLog("=== アクティブボードのデータ再取得完了 ===");
             }
             finally
             {
-                logPopupView.SetRefreshBusy(false);
+                _isRefreshingData = false;
+                MainController.SetLoadingIndicatorIdle();
+                UpdateAutoRefreshTimerState();
+            }
+        }
+
+        private List<ChannelWithMessages> GetActiveBoardChannels()
+        {
+            return _currentChannelDisplayFilter switch
+            {
+                ChannelDisplayFilter.JoinedOnly => _joinedDisplayedChannels.ToList(),
+                ChannelDisplayFilter.NotJoinedOnly => _notJoinedDisplayedChannels.ToList(),
+                _ => _allDisplayedChannels.ToList()
+            };
+        }
+
+        private void UpsertChannelAcrossBoards(ChannelWithMessages refreshedChannel)
+        {
+            UpsertChannelInCollection(_allDisplayedChannels, refreshedChannel);
+
+            if (refreshedChannel.IsMember)
+            {
+                UpsertChannelInCollection(_joinedDisplayedChannels, refreshedChannel);
+                RemoveChannelFromCollection(_notJoinedDisplayedChannels, refreshedChannel.Channel.Id);
+            }
+            else
+            {
+                UpsertChannelInCollection(_notJoinedDisplayedChannels, refreshedChannel);
+                RemoveChannelFromCollection(_joinedDisplayedChannels, refreshedChannel.Channel.Id);
+            }
+        }
+
+        private void UpsertChannelInCollection(ObservableCollection<ChannelWithMessages> channels, ChannelWithMessages channel)
+        {
+            RemoveChannelFromCollection(channels, channel.Channel.Id);
+            InsertDisplayedChannel(channels, channel);
+        }
+
+        private static void RemoveChannelFromCollection(ObservableCollection<ChannelWithMessages> channels, string? channelId)
+        {
+            if (string.IsNullOrWhiteSpace(channelId))
+            {
+                return;
+            }
+
+            for (int i = channels.Count - 1; i >= 0; i--)
+            {
+                if (string.Equals(channels[i].Channel.Id, channelId, StringComparison.OrdinalIgnoreCase))
+                {
+                    channels.RemoveAt(i);
+                }
             }
         }
 

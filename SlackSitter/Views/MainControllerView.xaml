@@ -99,12 +99,6 @@
             Visibility="Collapsed" />
 
         <views:LogPopupView
-            x:Name="DataFetchPopupBorder"
-            HorizontalAlignment="Left"
-            VerticalAlignment="Top"
-            Visibility="Collapsed" />
-
-        <views:LogPopupView
             x:Name="ActivityLogPopupBorder"
             HorizontalAlignment="Left"
             VerticalAlignment="Top"
@@ -124,9 +118,10 @@
             x:Name="LoadingIndicatorButton"
             HorizontalAlignment="Center"
             VerticalAlignment="Bottom"
-            Margin="-118,0,0,20"
+            Margin="236,0,0,20"
             CenterGlyph="&#xE895;"
             ContentForeground="Gray"
+            IsCircular="False"
             Click="LoadingIndicatorButton_Click"
             Visibility="Collapsed" />
 
@@ -134,7 +129,7 @@
             x:Name="UserAvatarButton"
             HorizontalAlignment="Center"
             VerticalAlignment="Bottom"
-            Margin="0,0,0,20"
+            Margin="-118,0,0,20"
             InnerBorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
             Click="UserAvatarButton_Click"
             Visibility="Collapsed" />
@@ -143,7 +138,7 @@
             x:Name="GearIconButton"
             HorizontalAlignment="Center"
             VerticalAlignment="Bottom"
-            Margin="118,0,0,20"
+            Margin="0,0,0,20"
             InnerBorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
             CenterGlyph="&#xE713;"
             Click="GearIconButton_Click"
@@ -153,7 +148,7 @@
             x:Name="PlusIconButton"
             HorizontalAlignment="Center"
             VerticalAlignment="Bottom"
-            Margin="236,0,0,20"
+            Margin="118,0,0,20"
             InnerBorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
             CenterGlyph="&#xE710;"
             Click="PlusIconButton_Click"
