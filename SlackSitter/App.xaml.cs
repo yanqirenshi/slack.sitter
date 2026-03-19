@@ -34,7 +34,10 @@ namespace SlackSitter
         /// </summary>
         public App()
         {
+            StartupTrace.Log("App constructor entered");
             InitializeComponent();
+            StartupTrace.Log("App InitializeComponent completed");
+            UnhandledException += App_UnhandledException;
         }
 
         /// <summary>
@@ -43,8 +46,24 @@ namespace SlackSitter
         /// <param name="args">Details about the launch request and process.</param>
         protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
         {
-            _window = new MainWindow();
-            _window.Activate();
+            try
+            {
+                StartupTrace.Log("OnLaunched entered");
+                _window = new MainWindow();
+                StartupTrace.Log("MainWindow created");
+                _window.Activate();
+                StartupTrace.Log("MainWindow activated");
+            }
+            catch (Exception ex)
+            {
+                StartupTrace.LogException("OnLaunched", ex);
+                throw;
+            }
+        }
+
+        private void App_UnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)
+        {
+            StartupTrace.LogException("Application.UnhandledException", e.Exception);
         }
     }
 }

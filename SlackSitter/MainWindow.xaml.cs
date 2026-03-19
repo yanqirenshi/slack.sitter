@@ -63,7 +63,9 @@ namespace SlackSitter
 
         public MainWindow()
         {
+            StartupTrace.Log("MainWindow constructor entered");
             InitializeComponent();
+            StartupTrace.Log("MainWindow InitializeComponent completed");
             _slackService = new SlackService();
             _settingsService = new SettingsService();
             _customBoardStorageService = new CustomBoardStorageService();
@@ -89,7 +91,9 @@ namespace SlackSitter
 
             AddLog($".env file path: {_settingsService.GetEnvFilePath()}");
 
+            StartupTrace.Log("MainWindow constructor before LoadSettingsAndAuthenticate");
             LoadSettingsAndAuthenticate();
+            StartupTrace.Log("MainWindow constructor completed");
         }
 
         private void AddLog(string message)
