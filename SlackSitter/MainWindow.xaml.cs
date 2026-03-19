@@ -44,6 +44,7 @@ namespace SlackSitter
         private const int MaxConcurrentMessageLoads = 4;
         private readonly SlackService _slackService;
         private readonly SettingsService _settingsService;
+        private readonly CustomBoardStorageService _customBoardStorageService;
         private readonly HttpClient _httpClient;
         private readonly DispatcherTimer _autoRefreshTimer;
         private readonly HashSet<string> _allUnarchivedChannelNames = new(StringComparer.OrdinalIgnoreCase);
@@ -65,6 +66,7 @@ namespace SlackSitter
             InitializeComponent();
             _slackService = new SlackService();
             _settingsService = new SettingsService();
+            _customBoardStorageService = new CustomBoardStorageService();
             _httpClient = new HttpClient(new HttpClientHandler { AllowAutoRedirect = false });
             _autoRefreshTimer = new DispatcherTimer
             {
@@ -930,6 +932,7 @@ namespace SlackSitter
                 MainPanel.Visibility = Visibility.Visible;
 
                 MainController.SetEnvironmentPathText($".env ファイルの保存先: {_settingsService.GetEnvFilePath()}");
+                await LoadPersistedCustomBoardStateAsync();
 
                 await RefreshWorkspaceDataAsync();
             }
@@ -1015,6 +1018,7 @@ namespace SlackSitter
                 AddLog($"取得したチャンネル数: {totalChannelsCount}");
                 AddLog($"#times* チャンネル数: {totalTimesChannelsCount}");
                 MainController.SetAvailableChannels(_allUnarchivedChannelNames);
+                await RestorePersistedCustomBoardAsync(workspaceUrl);
 
                 if (totalChannelsCount == 0)
                 {
@@ -1130,6 +1134,7 @@ namespace SlackSitter
                 _currentChannelDisplayFilter = ChannelDisplayFilter.CustomOnly;
                 RefreshDisplayedChannelsFromFilter();
                 UpdateChannelFilterButtonState();
+                await SaveCustomBoardStateAsync();
                 MainController.HideAllPopups();
                 AddLog("=== 追加チャンネルの取得完了 ===");
             }
@@ -1189,6 +1194,58 @@ namespace SlackSitter
             AuthenticationPanel.Visibility = Visibility.Visible;
             MainController.Reset();
             UpdateAutoRefreshTimerState();
+        }
+
+        private async Task LoadPersistedCustomBoardStateAsync()
+        {
+            var state = await _customBoardStorageService.LoadAsync();
+            var selectedChannels = state.SelectedChannels
+                .Where(name => !string.IsNullOrWhiteSpace(name))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            MainController.SetSelectedChannels(selectedChannels);
+            MainController.SetCustomChannelButtonVisible(state.IsVisible && selectedChannels.Count > 0);
+        }
+
+        private async Task RestorePersistedCustomBoardAsync(string? workspaceUrl)
+        {
+            var selectedChannelNames = MainController.SelectedChannelNames;
+            if (selectedChannelNames.Count == 0)
+            {
+                _customDisplayedChannels.Clear();
+                MainController.SetCustomChannelButtonVisible(false);
+                if (_currentChannelDisplayFilter == ChannelDisplayFilter.CustomOnly)
+                {
+                    _currentChannelDisplayFilter = ChannelDisplayFilter.JoinedOnly;
+                    RefreshDisplayedChannelsFromFilter();
+                    UpdateChannelFilterButtonState();
+                }
+
+                return;
+            }
+
+            var selectedChannels = selectedChannelNames
+                .Where(name => _allUnarchivedChannelsByName.TryGetValue(name, out _))
+                .Select(name => _allUnarchivedChannelsByName[name])
+                .ToList();
+
+            if (selectedChannels.Count == 0)
+            {
+                _customDisplayedChannels.Clear();
+                return;
+            }
+
+            var customChannels = await LoadChannelBatchAsync(selectedChannels, workspaceUrl);
+            ReplaceCustomChannels(selectedChannelNames, customChannels);
+            MainController.SetCustomChannelButtonVisible(true);
+        }
+
+        private Task SaveCustomBoardStateAsync()
+        {
+            return _customBoardStorageService.SaveAsync(
+                MainController.SelectedChannelNames,
+                MainController.SelectedChannelNames.Count > 0);
         }
     }
 }

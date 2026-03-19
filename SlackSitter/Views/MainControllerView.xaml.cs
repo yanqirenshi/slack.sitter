@@ -16,6 +16,7 @@ namespace SlackSitter.Views
         private readonly Brush _defaultPrimaryTextBrush;
         private readonly List<string> _allAvailableChannels = new();
         private bool _isCustomChannelButtonVisible;
+        private bool _areUserActionButtonsVisible;
 
         public event RoutedEventHandler? GearIconClick;
         public event RoutedEventHandler? PlusIconClick;
@@ -64,6 +65,20 @@ namespace SlackSitter.Views
                 .Where(name => !string.IsNullOrWhiteSpace(name))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .OrderBy(name => name, StringComparer.OrdinalIgnoreCase));
+
+            RefreshAvailableChannels();
+        }
+
+        public void SetSelectedChannels(IEnumerable<string> channelNames)
+        {
+            SelectedChannels.Clear();
+
+            foreach (var channelName in channelNames
+                .Where(name => !string.IsNullOrWhiteSpace(name))
+                .Distinct(StringComparer.OrdinalIgnoreCase))
+            {
+                SelectedChannels.Add(channelName);
+            }
 
             RefreshAvailableChannels();
         }
@@ -146,6 +161,7 @@ namespace SlackSitter.Views
 
         public void ShowUserActionButtons()
         {
+            _areUserActionButtonsVisible = true;
             GearIconButton.Visibility = Visibility.Visible;
             UserAvatarButton.Visibility = Visibility.Visible;
             PlusIconButton.Visibility = Visibility.Visible;
@@ -156,6 +172,7 @@ namespace SlackSitter.Views
 
         public void HideUserActionButtons()
         {
+            _areUserActionButtonsVisible = false;
             GearIconButton.Visibility = Visibility.Collapsed;
             UserAvatarButton.Visibility = Visibility.Collapsed;
             PlusIconButton.Visibility = Visibility.Collapsed;
@@ -187,7 +204,9 @@ namespace SlackSitter.Views
         public void SetCustomChannelButtonVisible(bool isVisible)
         {
             _isCustomChannelButtonVisible = isVisible;
-            CustomChannelButton.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
+            CustomChannelButton.Visibility = isVisible && _areUserActionButtonsVisible
+                ? Visibility.Visible
+                : Visibility.Collapsed;
         }
 
         public void SetFilterButtonState(bool isJoinedOnlySelected, bool isNotJoinedOnlySelected, bool isCustomSelected = false)
