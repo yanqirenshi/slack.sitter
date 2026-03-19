@@ -28,7 +28,24 @@
 
         <Grid x:Name="MainPanel" Visibility="Collapsed">
             <views:ChannelBoardView
-                x:Name="ChannelBoard"
+                x:Name="AllChannelBoard"
+                Visibility="Collapsed"
+                MessageRichTextBlockLoadedRequested="ChannelCardView_MessageRichTextBlockLoadedRequested"
+                MessageAvatarBorderLoadedRequested="ChannelCardView_MessageAvatarBorderLoadedRequested"
+                ReactionBorderLoadedRequested="ChannelCardView_ReactionBorderLoadedRequested"
+                ShowImageRequested="ChannelCardView_ShowImageRequested" />
+
+            <views:ChannelBoardView
+                x:Name="JoinedChannelBoard"
+                Visibility="Visible"
+                MessageRichTextBlockLoadedRequested="ChannelCardView_MessageRichTextBlockLoadedRequested"
+                MessageAvatarBorderLoadedRequested="ChannelCardView_MessageAvatarBorderLoadedRequested"
+                ReactionBorderLoadedRequested="ChannelCardView_ReactionBorderLoadedRequested"
+                ShowImageRequested="ChannelCardView_ShowImageRequested" />
+
+            <views:ChannelBoardView
+                x:Name="NotJoinedChannelBoard"
+                Visibility="Collapsed"
                 MessageRichTextBlockLoadedRequested="ChannelCardView_MessageRichTextBlockLoadedRequested"
                 MessageAvatarBorderLoadedRequested="ChannelCardView_MessageAvatarBorderLoadedRequested"
                 ReactionBorderLoadedRequested="ChannelCardView_ReactionBorderLoadedRequested"

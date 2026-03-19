@@ -47,9 +47,10 @@ namespace SlackSitter
         private readonly HashSet<string> _allUnarchivedChannelNames = new(StringComparer.OrdinalIgnoreCase);
         private string? _currentUserId;
         private string? _currentUserName;
-        private ObservableCollection<ChannelWithMessages> _channelsWithMessages;
+        private readonly ObservableCollection<ChannelWithMessages> _allDisplayedChannels;
+        private readonly ObservableCollection<ChannelWithMessages> _joinedDisplayedChannels;
+        private readonly ObservableCollection<ChannelWithMessages> _notJoinedDisplayedChannels;
         private ObservableCollection<string> _logMessages;
-        private readonly List<ChannelWithMessages> _allChannels = new List<ChannelWithMessages>();
         private Dictionary<string, string> _customEmojiMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         private ChannelDisplayFilter _currentChannelDisplayFilter = ChannelDisplayFilter.JoinedOnly;
         private bool _isAutoRefreshEnabled = true;
@@ -66,10 +67,16 @@ namespace SlackSitter
                 Interval = AutoRefreshInterval
             };
             _autoRefreshTimer.Tick += AutoRefreshTimer_Tick;
-            _channelsWithMessages = new ObservableCollection<ChannelWithMessages>();
+            _allDisplayedChannels = new ObservableCollection<ChannelWithMessages>();
+            _joinedDisplayedChannels = new ObservableCollection<ChannelWithMessages>();
+            _notJoinedDisplayedChannels = new ObservableCollection<ChannelWithMessages>();
             _logMessages = new ObservableCollection<string>();
+            AllChannelBoard.SetItemsSource(_allDisplayedChannels);
+            JoinedChannelBoard.SetItemsSource(_joinedDisplayedChannels);
+            NotJoinedChannelBoard.SetItemsSource(_notJoinedDisplayedChannels);
             MainController.SetLogItemsSource(_logMessages);
             UpdateChannelFilterButtonState();
+            UpdateVisibleChannelBoard();
             UpdateAutoRefreshTimerState();
 
             AddLog($".env file path: {_settingsService.GetEnvFilePath()}");
@@ -107,37 +114,34 @@ namespace SlackSitter
             return string.Compare(left.Name, right.Name, StringComparison.OrdinalIgnoreCase);
         }
 
-        private void InsertDisplayedChannel(ChannelWithMessages channel)
+        private void InsertDisplayedChannel(ObservableCollection<ChannelWithMessages> displayedChannels, ChannelWithMessages channel)
         {
             var insertIndex = 0;
 
-            while (insertIndex < _channelsWithMessages.Count && CompareChannels(_channelsWithMessages[insertIndex], channel) <= 0)
+            while (insertIndex < displayedChannels.Count && CompareChannels(displayedChannels[insertIndex], channel) <= 0)
             {
                 insertIndex++;
             }
 
-            _channelsWithMessages.Insert(insertIndex, channel);
-        }
-
-        private bool MatchesCurrentFilter(ChannelWithMessages channel)
-        {
-            return _currentChannelDisplayFilter switch
-            {
-                ChannelDisplayFilter.JoinedOnly => channel.IsMember,
-                ChannelDisplayFilter.NotJoinedOnly => !channel.IsMember,
-                _ => true
-            };
+            displayedChannels.Insert(insertIndex, channel);
         }
 
         private void RefreshDisplayedChannelsFromFilter()
         {
-            var filteredChannels = _allChannels
-                .Where(MatchesCurrentFilter)
-                .OrderBy(channel => channel, Comparer<ChannelWithMessages>.Create(CompareChannels))
-                .ToList();
+            UpdateVisibleChannelBoard();
+        }
 
-            _channelsWithMessages = new ObservableCollection<ChannelWithMessages>(filteredChannels);
-            ChannelBoard.SetItemsSource(_channelsWithMessages);
+        private void UpdateVisibleChannelBoard()
+        {
+            AllChannelBoard.Visibility = _currentChannelDisplayFilter == ChannelDisplayFilter.All
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+            JoinedChannelBoard.Visibility = _currentChannelDisplayFilter == ChannelDisplayFilter.JoinedOnly
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+            NotJoinedChannelBoard.Visibility = _currentChannelDisplayFilter == ChannelDisplayFilter.NotJoinedOnly
+                ? Visibility.Visible
+                : Visibility.Collapsed;
         }
 
         private void MessageRichTextBlock_Loaded(object sender, RoutedEventArgs e)
@@ -824,10 +828,10 @@ namespace SlackSitter
 
             try
             {
-                _allChannels.Clear();
                 _allUnarchivedChannelNames.Clear();
-                _channelsWithMessages.Clear();
-                ChannelBoard.SetItemsSource(_channelsWithMessages);
+                _allDisplayedChannels.Clear();
+                _joinedDisplayedChannels.Clear();
+                _notJoinedDisplayedChannels.Clear();
                 MainController.SetAvailableChannels(Array.Empty<string>());
 
                 var totalChannelsCount = 0;
@@ -863,11 +867,15 @@ namespace SlackSitter
 
                     foreach (var channelWithMessages in batchResults.OrderBy(channel => channel, Comparer<ChannelWithMessages>.Create(CompareChannels)))
                     {
-                        _allChannels.Add(channelWithMessages);
+                        InsertDisplayedChannel(_allDisplayedChannels, channelWithMessages);
 
-                        if (MatchesCurrentFilter(channelWithMessages))
+                        if (channelWithMessages.IsMember)
                         {
-                            InsertDisplayedChannel(channelWithMessages);
+                            InsertDisplayedChannel(_joinedDisplayedChannels, channelWithMessages);
+                        }
+                        else
+                        {
+                            InsertDisplayedChannel(_notJoinedDisplayedChannels, channelWithMessages);
                         }
 
                         AddLog($"チャンネル #{channelWithMessages.Name}: {channelWithMessages.Messages.Count} 件のメッセージを取得");
