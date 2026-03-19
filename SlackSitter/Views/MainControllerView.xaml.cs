@@ -15,11 +15,14 @@ namespace SlackSitter.Views
         private readonly Brush _defaultAccentBrush;
         private readonly Brush _defaultPrimaryTextBrush;
         private readonly List<string> _allAvailableChannels = new();
+        private bool _isCustomChannelButtonVisible;
 
         public event RoutedEventHandler? GearIconClick;
         public event RoutedEventHandler? PlusIconClick;
         public event RoutedEventHandler? CircleIcon1Click;
         public event RoutedEventHandler? CircleIcon2Click;
+        public event RoutedEventHandler? CustomChannelClick;
+        public event RoutedEventHandler? AddChannelsRequested;
         public event RoutedEventHandler? CopyLogRequested;
         public event RoutedEventHandler? RefreshRequested;
         public event TypedEventHandler<UserPopupView, string>? UpdateTokenRequested;
@@ -148,6 +151,7 @@ namespace SlackSitter.Views
             PlusIconButton.Visibility = Visibility.Visible;
             CircleIcon1Button.Visibility = Visibility.Visible;
             CircleIcon2Button.Visibility = Visibility.Visible;
+            CustomChannelButton.Visibility = _isCustomChannelButtonVisible ? Visibility.Visible : Visibility.Collapsed;
         }
 
         public void HideUserActionButtons()
@@ -157,6 +161,7 @@ namespace SlackSitter.Views
             PlusIconButton.Visibility = Visibility.Collapsed;
             CircleIcon1Button.Visibility = Visibility.Collapsed;
             CircleIcon2Button.Visibility = Visibility.Collapsed;
+            CustomChannelButton.Visibility = Visibility.Collapsed;
         }
 
         public void Reset()
@@ -169,13 +174,23 @@ namespace SlackSitter.Views
             PlusChannelFilterTextBox.Text = string.Empty;
             RefreshAvailableChannels();
             HideAllPopups();
+            _isCustomChannelButtonVisible = false;
+            CustomChannelButton.Visibility = Visibility.Collapsed;
             LogIconButton.Visibility = Visibility.Collapsed;
             LoadingIndicatorButton.Visibility = Visibility.Collapsed;
             LoadingIndicatorButton.InnerBorderBrush = _defaultAccentBrush;
             LoadingIndicatorButton.ContentForeground = new SolidColorBrush(Microsoft.UI.Colors.Gray);
         }
 
-        public void SetFilterButtonState(bool isJoinedOnlySelected, bool isNotJoinedOnlySelected)
+        public IReadOnlyList<string> SelectedChannelNames => SelectedChannels.ToList();
+
+        public void SetCustomChannelButtonVisible(bool isVisible)
+        {
+            _isCustomChannelButtonVisible = isVisible;
+            CustomChannelButton.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        public void SetFilterButtonState(bool isJoinedOnlySelected, bool isNotJoinedOnlySelected, bool isCustomSelected = false)
         {
             var selectedBrush = new SolidColorBrush(Microsoft.UI.Colors.Red);
 
@@ -184,6 +199,9 @@ namespace SlackSitter.Views
 
             CircleIcon2Button.InnerBorderBrush = isNotJoinedOnlySelected ? selectedBrush : _defaultAccentBrush;
             CircleIcon2Button.ContentForeground = isNotJoinedOnlySelected ? selectedBrush : _defaultPrimaryTextBrush;
+
+            CustomChannelButton.InnerBorderBrush = isCustomSelected ? selectedBrush : _defaultAccentBrush;
+            CustomChannelButton.ContentForeground = isCustomSelected ? selectedBrush : _defaultPrimaryTextBrush;
         }
 
         private void LogIconButton_Click(object sender, RoutedEventArgs e)
@@ -257,6 +275,11 @@ namespace SlackSitter.Views
             PlusPopupBorder.Visibility = Visibility.Collapsed;
         }
 
+        private void AddChannelsButton_Click(object sender, RoutedEventArgs e)
+        {
+            AddChannelsRequested?.Invoke(this, e);
+        }
+
         private void CircleIcon1Button_Click(object sender, RoutedEventArgs e)
         {
             CircleIcon1Click?.Invoke(sender, e);
@@ -265,6 +288,11 @@ namespace SlackSitter.Views
         private void CircleIcon2Button_Click(object sender, RoutedEventArgs e)
         {
             CircleIcon2Click?.Invoke(sender, e);
+        }
+
+        private void CustomChannelButton_Click(object sender, RoutedEventArgs e)
+        {
+            CustomChannelClick?.Invoke(sender, e);
         }
 
         private void UserPopupBorder_UpdateTokenRequested(UserPopupView sender, string newAccessToken)

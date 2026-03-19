@@ -19,6 +19,7 @@ using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Navigation;
 using Microsoft.UI.Text;
+using SlackNet;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
@@ -35,7 +36,8 @@ namespace SlackSitter
         {
             All,
             JoinedOnly,
-            NotJoinedOnly
+            NotJoinedOnly,
+            CustomOnly
         }
 
         private static readonly TimeSpan AutoRefreshInterval = TimeSpan.FromMinutes(5);
@@ -45,11 +47,13 @@ namespace SlackSitter
         private readonly HttpClient _httpClient;
         private readonly DispatcherTimer _autoRefreshTimer;
         private readonly HashSet<string> _allUnarchivedChannelNames = new(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, Conversation> _allUnarchivedChannelsByName = new(StringComparer.OrdinalIgnoreCase);
         private string? _currentUserId;
         private string? _currentUserName;
         private readonly ObservableCollection<ChannelWithMessages> _allDisplayedChannels;
         private readonly ObservableCollection<ChannelWithMessages> _joinedDisplayedChannels;
         private readonly ObservableCollection<ChannelWithMessages> _notJoinedDisplayedChannels;
+        private readonly ObservableCollection<ChannelWithMessages> _customDisplayedChannels;
         private ObservableCollection<string> _logMessages;
         private Dictionary<string, string> _customEmojiMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         private ChannelDisplayFilter _currentChannelDisplayFilter = ChannelDisplayFilter.JoinedOnly;
@@ -70,10 +74,12 @@ namespace SlackSitter
             _allDisplayedChannels = new ObservableCollection<ChannelWithMessages>();
             _joinedDisplayedChannels = new ObservableCollection<ChannelWithMessages>();
             _notJoinedDisplayedChannels = new ObservableCollection<ChannelWithMessages>();
+            _customDisplayedChannels = new ObservableCollection<ChannelWithMessages>();
             _logMessages = new ObservableCollection<string>();
             AllChannelBoard.SetItemsSource(_allDisplayedChannels);
             JoinedChannelBoard.SetItemsSource(_joinedDisplayedChannels);
             NotJoinedChannelBoard.SetItemsSource(_notJoinedDisplayedChannels);
+            CustomChannelBoard.SetItemsSource(_customDisplayedChannels);
             MainController.SetLogItemsSource(_logMessages);
             UpdateChannelFilterButtonState();
             UpdateVisibleChannelBoard();
@@ -140,6 +146,9 @@ namespace SlackSitter
                 ? Visibility.Visible
                 : Visibility.Collapsed;
             NotJoinedChannelBoard.Visibility = _currentChannelDisplayFilter == ChannelDisplayFilter.NotJoinedOnly
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+            CustomChannelBoard.Visibility = _currentChannelDisplayFilter == ChannelDisplayFilter.CustomOnly
                 ? Visibility.Visible
                 : Visibility.Collapsed;
         }
@@ -714,7 +723,8 @@ namespace SlackSitter
         {
             MainController.SetFilterButtonState(
                 _currentChannelDisplayFilter == ChannelDisplayFilter.JoinedOnly,
-                _currentChannelDisplayFilter == ChannelDisplayFilter.NotJoinedOnly);
+                _currentChannelDisplayFilter == ChannelDisplayFilter.NotJoinedOnly,
+                _currentChannelDisplayFilter == ChannelDisplayFilter.CustomOnly);
         }
 
         private void MainController_CircleIcon1Click(object sender, RoutedEventArgs e)
@@ -740,6 +750,19 @@ namespace SlackSitter
             UpdateChannelFilterButtonState();
             AddLog(_currentChannelDisplayFilter == ChannelDisplayFilter.NotJoinedOnly
                 ? "未参加チャンネルのみ表示に切り替えました"
+                : "すべてのチャンネル表示に戻しました");
+        }
+
+        private void MainController_CustomChannelClick(object sender, RoutedEventArgs e)
+        {
+            _currentChannelDisplayFilter = _currentChannelDisplayFilter == ChannelDisplayFilter.CustomOnly
+                ? ChannelDisplayFilter.All
+                : ChannelDisplayFilter.CustomOnly;
+
+            RefreshDisplayedChannelsFromFilter();
+            UpdateChannelFilterButtonState();
+            AddLog(_currentChannelDisplayFilter == ChannelDisplayFilter.CustomOnly
+                ? "追加チャンネル表示に切り替えました"
                 : "すべてのチャンネル表示に戻しました");
         }
 
@@ -782,10 +805,17 @@ namespace SlackSitter
                     activeChannels.Select(channel => channel.Channel).ToList(),
                     _slackService.GetWorkspaceUrl());
 
-                foreach (var refreshedChannel in refreshedChannels)
+                if (_currentChannelDisplayFilter == ChannelDisplayFilter.CustomOnly)
                 {
-                    UpsertChannelAcrossBoards(refreshedChannel);
-                    AddLog($"チャンネル #{refreshedChannel.Name}: {refreshedChannel.Messages.Count} 件のメッセージを再取得");
+                    ReplaceCustomChannels(MainController.SelectedChannelNames, refreshedChannels);
+                }
+                else
+                {
+                    foreach (var refreshedChannel in refreshedChannels)
+                    {
+                        UpsertChannelAcrossBoards(refreshedChannel);
+                        AddLog($"チャンネル #{refreshedChannel.Name}: {refreshedChannel.Messages.Count} 件のメッセージを再取得");
+                    }
                 }
 
                 AddLog("=== アクティブボードのデータ再取得完了 ===");
@@ -804,8 +834,24 @@ namespace SlackSitter
             {
                 ChannelDisplayFilter.JoinedOnly => _joinedDisplayedChannels.ToList(),
                 ChannelDisplayFilter.NotJoinedOnly => _notJoinedDisplayedChannels.ToList(),
+                ChannelDisplayFilter.CustomOnly => _customDisplayedChannels.ToList(),
                 _ => _allDisplayedChannels.ToList()
             };
+        }
+
+        private void ReplaceCustomChannels(IReadOnlyList<string> selectedChannelNames, IEnumerable<ChannelWithMessages> refreshedChannels)
+        {
+            var refreshedChannelMap = refreshedChannels.ToDictionary(channel => channel.Name, StringComparer.OrdinalIgnoreCase);
+
+            _customDisplayedChannels.Clear();
+            foreach (var channelName in selectedChannelNames)
+            {
+                if (refreshedChannelMap.TryGetValue(channelName, out var refreshedChannel))
+                {
+                    _customDisplayedChannels.Add(refreshedChannel);
+                    AddLog($"チャンネル #{refreshedChannel.Name}: {refreshedChannel.Messages.Count} 件のメッセージを再取得");
+                }
+            }
         }
 
         private void UpsertChannelAcrossBoards(ChannelWithMessages refreshedChannel)
@@ -907,6 +953,7 @@ namespace SlackSitter
             try
             {
                 _allUnarchivedChannelNames.Clear();
+                _allUnarchivedChannelsByName.Clear();
                 _allDisplayedChannels.Clear();
                 _joinedDisplayedChannels.Clear();
                 _notJoinedDisplayedChannels.Clear();
@@ -926,6 +973,11 @@ namespace SlackSitter
                         .Select(c => c.Name!))
                     {
                         _allUnarchivedChannelNames.Add(channelName);
+                    }
+
+                    foreach (var channel in channelBatch.Where(c => !c.IsArchived && !string.IsNullOrWhiteSpace(c.Name)))
+                    {
+                        _allUnarchivedChannelsByName[channel.Name!] = channel;
                     }
 
                     var timesChannelBatch = channelBatch
@@ -1039,6 +1091,52 @@ namespace SlackSitter
 
         private void MainController_PlusIconClick(object sender, RoutedEventArgs e)
         {
+        }
+
+        private async void MainController_AddChannelsRequested(object sender, RoutedEventArgs e)
+        {
+            if (!_slackService.IsAuthenticated)
+            {
+                AddLog("追加チャンネルを取得できません: 未認証です");
+                return;
+            }
+
+            var selectedChannelNames = MainController.SelectedChannelNames;
+            if (selectedChannelNames.Count == 0)
+            {
+                AddLog("追加対象のチャンネルが選択されていません");
+                return;
+            }
+
+            var selectedChannels = selectedChannelNames
+                .Where(name => _allUnarchivedChannelsByName.TryGetValue(name, out _))
+                .Select(name => _allUnarchivedChannelsByName[name])
+                .ToList();
+
+            if (selectedChannels.Count == 0)
+            {
+                AddLog("追加対象のチャンネル情報が見つかりませんでした");
+                return;
+            }
+
+            MainController.ShowLoadingIndicatorBusy();
+
+            try
+            {
+                AddLog($"=== 追加チャンネルの取得開始 ({selectedChannels.Count} チャンネル) ===");
+                var customChannels = await LoadChannelBatchAsync(selectedChannels, _slackService.GetWorkspaceUrl());
+                ReplaceCustomChannels(selectedChannelNames, customChannels);
+                MainController.SetCustomChannelButtonVisible(true);
+                _currentChannelDisplayFilter = ChannelDisplayFilter.CustomOnly;
+                RefreshDisplayedChannelsFromFilter();
+                UpdateChannelFilterButtonState();
+                MainController.HideAllPopups();
+                AddLog("=== 追加チャンネルの取得完了 ===");
+            }
+            finally
+            {
+                MainController.SetLoadingIndicatorIdle();
+            }
         }
 
         private async void UserPopupView_LogoutRequested(object sender, RoutedEventArgs e)

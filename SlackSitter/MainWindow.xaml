@@ -51,6 +51,14 @@
                 ReactionBorderLoadedRequested="ChannelCardView_ReactionBorderLoadedRequested"
                 ShowImageRequested="ChannelCardView_ShowImageRequested" />
 
+            <views:ChannelBoardView
+                x:Name="CustomChannelBoard"
+                Visibility="Collapsed"
+                MessageRichTextBlockLoadedRequested="ChannelCardView_MessageRichTextBlockLoadedRequested"
+                MessageAvatarBorderLoadedRequested="ChannelCardView_MessageAvatarBorderLoadedRequested"
+                ReactionBorderLoadedRequested="ChannelCardView_ReactionBorderLoadedRequested"
+                ShowImageRequested="ChannelCardView_ShowImageRequested" />
+
             <views:StatusPanelView x:Name="StatusPanel" />
 
             <views:MainControllerView
@@ -59,6 +67,8 @@
                 PlusIconClick="MainController_PlusIconClick"
                 CircleIcon1Click="MainController_CircleIcon1Click"
                 CircleIcon2Click="MainController_CircleIcon2Click"
+                CustomChannelClick="MainController_CustomChannelClick"
+                AddChannelsRequested="MainController_AddChannelsRequested"
                 CopyLogRequested="LogPopupView_CopyLogRequested"
                 RefreshRequested="LogPopupView_RefreshRequested"
                 UpdateTokenRequested="UserPopupView_UpdateTokenRequested"

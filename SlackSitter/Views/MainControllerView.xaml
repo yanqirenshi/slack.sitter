@@ -87,7 +87,8 @@
                         Grid.Column="1"
                         Content="追加"
                         HorizontalAlignment="Right"
-                        Padding="16,8" />
+                        Padding="16,8"
+                        Click="AddChannelsButton_Click" />
                 </Grid>
             </views:PopupBubbleView.PopupContent>
         </views:PopupBubbleView>
@@ -174,6 +175,17 @@
             InnerBorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
             CenterText="②"
             Click="CircleIcon2Button_Click"
+            Visibility="Collapsed" />
+
+        <views:CircleActionButtonView
+            x:Name="CustomChannelButton"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Bottom"
+            Margin="590,0,0,20"
+            IsCircular="False"
+            InnerBorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
+            CenterText="③"
+            Click="CustomChannelButton_Click"
             Visibility="Collapsed" />
     </Grid>
 </UserControl>
