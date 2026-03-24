@@ -59,6 +59,7 @@ namespace SlackSitter.Views
             rootGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             rootGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             rootGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            rootGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             rootGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(40) });
             rootGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
@@ -188,6 +189,33 @@ namespace SlackSitter.Views
                 }
 
                 rootGrid.Children.Add(reactionContainer);
+            }
+
+            if (Message.Replies.Count > 0)
+            {
+                var repliesStack = new StackPanel
+                {
+                    Spacing = 4,
+                    Margin = new Thickness(0, 8, 0, 0)
+                };
+                Grid.SetRow(repliesStack, 3);
+                Grid.SetColumn(repliesStack, 1);
+
+                foreach (var reply in Message.Replies)
+                {
+                    var replyItemView = new MessageItemView
+                    {
+                        Message = reply,
+                        Margin = new Thickness(16, 0, 0, 0)
+                    };
+                    replyItemView.MessageRichTextBlockLoadedRequested += (_, richTextBlock) => MessageRichTextBlockLoadedRequested?.Invoke(this, richTextBlock);
+                    replyItemView.MessageAvatarBorderLoadedRequested += (_, border) => MessageAvatarBorderLoadedRequested?.Invoke(this, border);
+                    replyItemView.ReactionBorderLoadedRequested += (_, border) => ReactionBorderLoadedRequested?.Invoke(this, border);
+                    replyItemView.ShowImageRequested += (_, button) => ShowImageRequested?.Invoke(this, button);
+                    repliesStack.Children.Add(replyItemView);
+                }
+
+                rootGrid.Children.Add(repliesStack);
             }
 
             Content = rootGrid;

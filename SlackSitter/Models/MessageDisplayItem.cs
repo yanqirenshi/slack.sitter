@@ -1,5 +1,6 @@
 using SlackNet.Events;
 using System;
+using System.Collections.ObjectModel;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
@@ -22,8 +23,9 @@ namespace SlackSitter.Models
         public IReadOnlyList<MessageInlineSegment> Segments { get; }
         public IReadOnlyList<MessageImageItem> Images { get; }
         public IReadOnlyList<MessageReactionItem> Reactions { get; }
+        public IReadOnlyList<MessageDisplayItem> Replies { get; }
 
-        public MessageDisplayItem(MessageEvent message, string channelId, string? workspaceUrl, string? userAvatarUrl = null)
+        public MessageDisplayItem(MessageEvent message, string channelId, string? workspaceUrl, string? userAvatarUrl = null, IReadOnlyList<MessageDisplayItem>? replies = null)
         {
             User = message.User;
             Ts = message.Ts;
@@ -33,6 +35,7 @@ namespace SlackSitter.Models
             Segments = ParseSegments(message.Text);
             Images = ExtractImages(message);
             Reactions = ExtractReactions(message);
+            Replies = replies ?? Array.Empty<MessageDisplayItem>();
         }
 
         private static Uri? CreateUri(string? uriText)

@@ -120,6 +120,25 @@ namespace SlackSitter
                 : double.MinValue;
         }
 
+        private static int GetReplyCount(SlackNet.Events.MessageEvent message)
+        {
+            var propertyValue = message.GetType().GetProperty("ReplyCount")?.GetValue(message);
+
+            if (propertyValue == null)
+            {
+                return 0;
+            }
+
+            try
+            {
+                return Convert.ToInt32(propertyValue);
+            }
+            catch
+            {
+                return 0;
+            }
+        }
+
         private static int CompareChannels(ChannelWithMessages left, ChannelWithMessages right)
         {
             var memberComparison = right.IsMember.CompareTo(left.IsMember);
@@ -630,7 +649,22 @@ namespace SlackSitter
                 try
                 {
                     var messages = await _slackService.GetChannelMessagesAsync(channel.Id, 10).ConfigureAwait(false);
-                    var userImageTasks = messages
+                    var threadRepliesByParentTs = new Dictionary<string, List<SlackNet.Events.MessageEvent>>(StringComparer.OrdinalIgnoreCase);
+
+                    foreach (var message in messages.Where(message => !string.IsNullOrWhiteSpace(message.Ts) && GetReplyCount(message) > 0))
+                    {
+                        var replies = await _slackService.GetThreadRepliesAsync(channel.Id, message.Ts!).ConfigureAwait(false);
+                        if (replies.Count > 0)
+                        {
+                            threadRepliesByParentTs[message.Ts!] = replies;
+                        }
+                    }
+
+                    var allMessages = messages
+                        .Concat(threadRepliesByParentTs.Values.SelectMany(replyMessages => replyMessages))
+                        .ToList();
+
+                    var userImageTasks = allMessages
                         .Select(message => message.User)
                         .Where(userId => !string.IsNullOrWhiteSpace(userId))
                         .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -645,6 +679,17 @@ namespace SlackSitter
                             workspaceUrl,
                             !string.IsNullOrWhiteSpace(message.User) && userImageTasks.TryGetValue(message.User, out var imageTask)
                                 ? imageTask.Result
+                                : null,
+                            threadRepliesByParentTs.TryGetValue(message.Ts ?? string.Empty, out var replies)
+                                ? replies
+                                    .Select(reply => new MessageDisplayItem(
+                                        reply,
+                                        channel.Id,
+                                        workspaceUrl,
+                                        !string.IsNullOrWhiteSpace(reply.User) && userImageTasks.TryGetValue(reply.User, out var replyImageTask)
+                                            ? replyImageTask.Result
+                                            : null))
+                                    .ToList()
                                 : null))
                         .ToList();
 

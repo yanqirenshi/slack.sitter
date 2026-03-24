@@ -232,6 +232,34 @@ namespace SlackSitter.Services
             }
         }
 
+        public async Task<List<SlackNet.Events.MessageEvent>> GetThreadRepliesAsync(string channelId, string threadTs, int limit = 20)
+        {
+            if (_client == null || string.IsNullOrWhiteSpace(channelId) || string.IsNullOrWhiteSpace(threadTs))
+            {
+                return new List<SlackNet.Events.MessageEvent>();
+            }
+
+            try
+            {
+                var response = await _client.Conversations.Replies(channelId, threadTs, limit: limit);
+
+                if (response.Messages != null)
+                {
+                    return response.Messages
+                        .Where(message => !string.Equals(message.Ts, threadTs, StringComparison.Ordinal))
+                        .OrderBy(message => message.Ts)
+                        .ToList();
+                }
+
+                return new List<SlackNet.Events.MessageEvent>();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error getting thread replies for channel {channelId} thread {threadTs}: {ex.Message}");
+                return new List<SlackNet.Events.MessageEvent>();
+            }
+        }
+
         public async Task<(Dictionary<string, string> EmojiMap, string? Error)> GetCustomEmojiAsync()
         {
             if (string.IsNullOrEmpty(_accessToken))
