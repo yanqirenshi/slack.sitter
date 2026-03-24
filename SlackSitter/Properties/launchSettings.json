@@ -1,8 +1,5 @@
 {
   "profiles": {
-    "SlackSitter (Package)": {
-      "commandName": "MsixPackage"
-    },
     "SlackSitter (Unpackaged)": {
       "commandName": "Project"
     }

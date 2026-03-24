@@ -55,6 +55,7 @@ namespace SlackSitter
         private readonly ObservableCollection<ChannelWithMessages> _joinedDisplayedChannels;
         private readonly ObservableCollection<ChannelWithMessages> _notJoinedDisplayedChannels;
         private readonly ObservableCollection<ChannelWithMessages> _customDisplayedChannels;
+        private readonly List<string> _customSelectedChannelNames = new();
         private ObservableCollection<string> _logMessages;
         private Dictionary<string, string> _customEmojiMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         private ChannelDisplayFilter _currentChannelDisplayFilter = ChannelDisplayFilter.JoinedOnly;
@@ -816,7 +817,7 @@ namespace SlackSitter
 
                 if (_currentChannelDisplayFilter == ChannelDisplayFilter.CustomOnly)
                 {
-                    ReplaceCustomChannels(MainController.SelectedChannelNames, refreshedChannels);
+                    ReplaceCustomChannels(_customSelectedChannelNames, refreshedChannels);
                 }
                 else
                 {
@@ -1206,21 +1207,22 @@ namespace SlackSitter
         private async Task LoadPersistedCustomBoardStateAsync()
         {
             var state = await _customBoardStorageService.LoadAsync();
-            var selectedChannels = state.SelectedChannels
+            _customSelectedChannelNames.Clear();
+            _customSelectedChannelNames.AddRange(state.SelectedChannels
                 .Where(name => !string.IsNullOrWhiteSpace(name))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToList();
+                .ToList());
 
-            MainController.SetSelectedChannels(selectedChannels);
-            MainController.SetCustomChannelButtonVisible(state.IsVisible && selectedChannels.Count > 0);
-            _currentChannelDisplayFilter = ParsePersistedFilter(state.ActiveFilter, selectedChannels.Count > 0);
+            MainController.ResetPlusPopupInputs();
+            MainController.SetCustomChannelButtonVisible(state.IsVisible && _customSelectedChannelNames.Count > 0);
+            _currentChannelDisplayFilter = ParsePersistedFilter(state.ActiveFilter, _customSelectedChannelNames.Count > 0);
             UpdateChannelFilterButtonState();
             RefreshDisplayedChannelsFromFilter();
         }
 
         private async Task RestorePersistedCustomBoardAsync(string? workspaceUrl)
         {
-            var selectedChannelNames = MainController.SelectedChannelNames;
+            var selectedChannelNames = _customSelectedChannelNames;
             if (selectedChannelNames.Count == 0)
             {
                 _customDisplayedChannels.Clear();
@@ -1255,8 +1257,8 @@ namespace SlackSitter
         private Task SaveCustomBoardStateAsync()
         {
             return _customBoardStorageService.SaveAsync(
-                MainController.SelectedChannelNames,
-                MainController.SelectedChannelNames.Count > 0,
+                _customSelectedChannelNames,
+                _customSelectedChannelNames.Count > 0,
                 _currentChannelDisplayFilter.ToString());
         }
 

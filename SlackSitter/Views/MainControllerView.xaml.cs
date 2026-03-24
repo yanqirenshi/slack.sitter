@@ -69,6 +69,16 @@ namespace SlackSitter.Views
             RefreshAvailableChannels();
         }
 
+        public void ResetPlusPopupInputs()
+        {
+            PlusChannelNameTextBox.Text = string.Empty;
+            PlusChannelFilterTextBox.Text = string.Empty;
+            AvailableChannelsListView.SelectedItem = null;
+            SelectedChannelsListView.SelectedItem = null;
+            SelectedChannels.Clear();
+            RefreshAvailableChannels();
+        }
+
         public void SetSelectedChannels(IEnumerable<string> channelNames)
         {
             SelectedChannels.Clear();
@@ -246,6 +256,11 @@ namespace SlackSitter.Views
 
         private void PlusIconButton_Click(object sender, RoutedEventArgs e)
         {
+            if (PlusPopupBorder.Visibility != Visibility.Visible)
+            {
+                ResetPlusPopupInputs();
+            }
+
             TogglePopup(PlusPopupBorder, sender as CircleActionButtonView, UserPopupBorder, ActivityLogPopupBorder);
             PlusIconClick?.Invoke(sender, e);
         }

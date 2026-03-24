@@ -25,19 +25,27 @@
                     </Grid.ColumnDefinitions>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
                     <TextBox
-                        x:Name="PlusChannelFilterTextBox"
+                        x:Name="PlusChannelNameTextBox"
                         Grid.Row="0"
+                        Grid.Column="0"
+                        Grid.ColumnSpan="2"
+                        PlaceholderText="名称" />
+
+                    <TextBox
+                        x:Name="PlusChannelFilterTextBox"
+                        Grid.Row="1"
                         Grid.Column="0"
                         PlaceholderText="チャンネル名で絞り込み"
                         TextChanged="PlusChannelFilterTextBox_TextChanged" />
 
                     <TextBlock
-                        Grid.Row="0"
+                        Grid.Row="1"
                         Grid.Column="1"
                         Text="対象チャンネル"
                         FontWeight="SemiBold"
@@ -46,7 +54,7 @@
 
                     <ListView
                         x:Name="AvailableChannelsListView"
-                        Grid.Row="1"
+                        Grid.Row="2"
                         Grid.Column="0"
                         ItemsSource="{x:Bind FilteredAvailableChannels}"
                         IsItemClickEnabled="False"
@@ -61,7 +69,7 @@
 
                     <ListView
                         x:Name="SelectedChannelsListView"
-                        Grid.Row="1"
+                        Grid.Row="2"
                         Grid.Column="1"
                         ItemsSource="{x:Bind SelectedChannels}"
                         DoubleTapped="SelectedChannelsListView_DoubleTapped"
@@ -74,7 +82,7 @@
                     </ListView>
 
                     <Button
-                        Grid.Row="2"
+                        Grid.Row="3"
                         Grid.Column="0"
                         Content="Cancel"
                         HorizontalAlignment="Left"
@@ -83,7 +91,7 @@
 
                     <Button
                         x:Name="AddChannelsButton"
-                        Grid.Row="2"
+                        Grid.Row="3"
                         Grid.Column="1"
                         Content="追加"
                         HorizontalAlignment="Right"
