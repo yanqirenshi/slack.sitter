@@ -12,10 +12,13 @@ namespace SlackSitter.Views
 {
     public sealed partial class MainControllerView : UserControl
     {
+        private const double CustomChannelButtonsBaseOffset = 590d;
+        private const double CustomChannelButtonSpacing = 118d;
         private readonly Brush _defaultAccentBrush;
         private readonly Brush _defaultPrimaryTextBrush;
         private readonly List<string> _allAvailableChannels = new();
-        private bool _isCustomChannelButtonVisible;
+        private readonly List<CircleActionButtonView> _customChannelButtons = new();
+        private bool _areCustomChannelButtonsVisible;
         private bool _areUserActionButtonsVisible;
 
         public event RoutedEventHandler? GearIconClick;
@@ -32,6 +35,7 @@ namespace SlackSitter.Views
 
         public ObservableCollection<string> FilteredAvailableChannels { get; } = new();
         public ObservableCollection<string> SelectedChannels { get; } = new();
+        public string PendingCustomBoardName => PlusChannelNameTextBox.Text?.Trim() ?? string.Empty;
 
         public MainControllerView()
         {
@@ -177,7 +181,7 @@ namespace SlackSitter.Views
             PlusIconButton.Visibility = Visibility.Visible;
             CircleIcon1Button.Visibility = Visibility.Visible;
             CircleIcon2Button.Visibility = Visibility.Visible;
-            CustomChannelButton.Visibility = _isCustomChannelButtonVisible ? Visibility.Visible : Visibility.Collapsed;
+            UpdateCustomChannelButtonsVisibility();
         }
 
         public void HideUserActionButtons()
@@ -188,7 +192,11 @@ namespace SlackSitter.Views
             PlusIconButton.Visibility = Visibility.Collapsed;
             CircleIcon1Button.Visibility = Visibility.Collapsed;
             CircleIcon2Button.Visibility = Visibility.Collapsed;
-            CustomChannelButton.Visibility = Visibility.Collapsed;
+
+            foreach (var button in _customChannelButtons)
+            {
+                button.Visibility = Visibility.Collapsed;
+            }
         }
 
         public void Reset()
@@ -201,8 +209,9 @@ namespace SlackSitter.Views
             PlusChannelFilterTextBox.Text = string.Empty;
             RefreshAvailableChannels();
             HideAllPopups();
-            _isCustomChannelButtonVisible = false;
-            CustomChannelButton.Visibility = Visibility.Collapsed;
+            _areCustomChannelButtonsVisible = false;
+            CustomChannelButtonsHost.Children.Clear();
+            _customChannelButtons.Clear();
             LogIconButton.Visibility = Visibility.Collapsed;
             LoadingIndicatorButton.Visibility = Visibility.Collapsed;
             LoadingIndicatorButton.InnerBorderBrush = _defaultAccentBrush;
@@ -211,15 +220,48 @@ namespace SlackSitter.Views
 
         public IReadOnlyList<string> SelectedChannelNames => SelectedChannels.ToList();
 
-        public void SetCustomChannelButtonVisible(bool isVisible)
+        public void SetCustomChannelButtons(IReadOnlyList<string> customBoardNames, int? selectedIndex = null)
         {
-            _isCustomChannelButtonVisible = isVisible;
-            CustomChannelButton.Visibility = isVisible && _areUserActionButtonsVisible
-                ? Visibility.Visible
-                : Visibility.Collapsed;
+            CustomChannelButtonsHost.Children.Clear();
+            _customChannelButtons.Clear();
+
+            for (int i = 0; i < customBoardNames.Count; i++)
+            {
+                var button = new CircleActionButtonView
+                {
+                    Diameter = 48,
+                    IsCircular = false,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Bottom,
+                    Margin = new Thickness(CustomChannelButtonsBaseOffset + (CustomChannelButtonSpacing * i), 0, 0, 20),
+                    InnerBorderBrush = _defaultAccentBrush,
+                    ContentForeground = _defaultPrimaryTextBrush,
+                    CenterText = GetCustomBoardButtonText(i),
+                    Tag = i
+                };
+
+                var boardName = customBoardNames[i];
+                if (!string.IsNullOrWhiteSpace(boardName))
+                {
+                    ToolTipService.SetToolTip(button, boardName);
+                }
+
+                button.Click += CustomChannelButton_Click;
+                _customChannelButtons.Add(button);
+                CustomChannelButtonsHost.Children.Add(button);
+            }
+
+            UpdateCustomChannelButtonsSelection(selectedIndex);
+            UpdateCustomChannelButtonsVisibility();
         }
 
-        public void SetFilterButtonState(bool isJoinedOnlySelected, bool isNotJoinedOnlySelected, bool isCustomSelected = false)
+        public void SetCustomChannelButtonVisible(bool isVisible)
+        {
+            _areCustomChannelButtonsVisible = isVisible;
+            UpdateCustomChannelButtonsVisibility();
+        }
+
+        public void SetFilterButtonState(bool isJoinedOnlySelected, bool isNotJoinedOnlySelected, bool isCustomSelected = false, int? selectedCustomIndex = null)
         {
             var selectedBrush = new SolidColorBrush(Microsoft.UI.Colors.Red);
 
@@ -228,9 +270,7 @@ namespace SlackSitter.Views
 
             CircleIcon2Button.InnerBorderBrush = isNotJoinedOnlySelected ? selectedBrush : _defaultAccentBrush;
             CircleIcon2Button.ContentForeground = isNotJoinedOnlySelected ? selectedBrush : _defaultPrimaryTextBrush;
-
-            CustomChannelButton.InnerBorderBrush = isCustomSelected ? selectedBrush : _defaultAccentBrush;
-            CustomChannelButton.ContentForeground = isCustomSelected ? selectedBrush : _defaultPrimaryTextBrush;
+            UpdateCustomChannelButtonsSelection(isCustomSelected ? selectedCustomIndex : null);
         }
 
         private void LogIconButton_Click(object sender, RoutedEventArgs e)
@@ -327,6 +367,34 @@ namespace SlackSitter.Views
         private void CustomChannelButton_Click(object sender, RoutedEventArgs e)
         {
             CustomChannelClick?.Invoke(sender, e);
+        }
+
+        private void UpdateCustomChannelButtonsSelection(int? selectedIndex)
+        {
+            var selectedBrush = new SolidColorBrush(Microsoft.UI.Colors.Red);
+
+            for (int i = 0; i < _customChannelButtons.Count; i++)
+            {
+                var isSelected = selectedIndex.HasValue && selectedIndex.Value == i;
+                _customChannelButtons[i].InnerBorderBrush = isSelected ? selectedBrush : _defaultAccentBrush;
+                _customChannelButtons[i].ContentForeground = isSelected ? selectedBrush : _defaultPrimaryTextBrush;
+            }
+        }
+
+        private void UpdateCustomChannelButtonsVisibility()
+        {
+            var isVisible = _areCustomChannelButtonsVisible && _areUserActionButtonsVisible && _customChannelButtons.Count > 0;
+
+            foreach (var button in _customChannelButtons)
+            {
+                button.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
+            }
+        }
+
+        private static string GetCustomBoardButtonText(int index)
+        {
+            string[] labels = ["③", "④", "⑤", "⑥", "⑦", "⑧", "⑨", "⑩", "⑪", "⑫"];
+            return index >= 0 && index < labels.Length ? labels[index] : (index + 3).ToString();
         }
 
         private void UserPopupBorder_UpdateTokenRequested(UserPopupView sender, string newAccessToken)

@@ -14,8 +14,16 @@ namespace SlackSitter.Services
 
         public class CustomBoardState
         {
-            public bool IsVisible { get; set; }
             public string ActiveFilter { get; set; } = "JoinedOnly";
+            public int ActiveCustomBoardIndex { get; set; } = -1;
+            public List<CustomBoardDefinition> CustomBoards { get; set; } = new();
+            public bool IsVisible { get; set; }
+            public List<string> SelectedChannels { get; set; } = new();
+        }
+
+        public class CustomBoardDefinition
+        {
+            public string Name { get; set; } = string.Empty;
             public List<string> SelectedChannels { get; set; } = new();
         }
 
@@ -38,7 +46,22 @@ namespace SlackSitter.Services
 
                 await using var stream = File.OpenRead(_filePath);
                 var state = await JsonSerializer.DeserializeAsync<CustomBoardState>(stream);
-                return state ?? new CustomBoardState();
+                if (state == null)
+                {
+                    return new CustomBoardState();
+                }
+
+                if (state.CustomBoards.Count == 0 && state.SelectedChannels.Count > 0)
+                {
+                    state.CustomBoards.Add(new CustomBoardDefinition
+                    {
+                        Name = string.Empty,
+                        SelectedChannels = state.SelectedChannels
+                    });
+                    state.ActiveCustomBoardIndex = state.IsVisible ? 0 : -1;
+                }
+
+                return state;
             }
             catch
             {
@@ -46,7 +69,7 @@ namespace SlackSitter.Services
             }
         }
 
-        public async Task SaveAsync(IEnumerable<string> selectedChannels, bool isVisible, string activeFilter)
+        public async Task SaveAsync(IEnumerable<CustomBoardDefinition> customBoards, int activeCustomBoardIndex, string activeFilter)
         {
             try
             {
@@ -58,13 +81,23 @@ namespace SlackSitter.Services
 
                 var state = new CustomBoardState
                 {
-                    IsVisible = isVisible,
                     ActiveFilter = string.IsNullOrWhiteSpace(activeFilter) ? "JoinedOnly" : activeFilter,
-                    SelectedChannels = selectedChannels
-                        .Where(name => !string.IsNullOrWhiteSpace(name))
-                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                    ActiveCustomBoardIndex = activeCustomBoardIndex,
+                    CustomBoards = customBoards
+                        .Select(board => new CustomBoardDefinition
+                        {
+                            Name = board.Name?.Trim() ?? string.Empty,
+                            SelectedChannels = board.SelectedChannels
+                                .Where(name => !string.IsNullOrWhiteSpace(name))
+                                .Distinct(StringComparer.OrdinalIgnoreCase)
+                                .ToList()
+                        })
+                        .Where(board => board.SelectedChannels.Count > 0)
                         .ToList()
                 };
+
+                state.IsVisible = state.CustomBoards.Count > 0;
+                state.SelectedChannels = state.CustomBoards.FirstOrDefault()?.SelectedChannels ?? new List<string>();
 
                 await using var stream = File.Create(_filePath);
                 await JsonSerializer.SerializeAsync(stream, state, new JsonSerializerOptions

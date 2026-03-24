@@ -7,7 +7,7 @@
     xmlns:views="using:SlackSitter.Views"
     mc:Ignorable="d">
 
-    <Grid>
+    <Grid x:Name="RootGrid">
         <views:PopupBubbleView
             x:Name="PlusPopupBorder"
             HorizontalAlignment="Left"
@@ -185,15 +185,6 @@
             Click="CircleIcon2Button_Click"
             Visibility="Collapsed" />
 
-        <views:CircleActionButtonView
-            x:Name="CustomChannelButton"
-            HorizontalAlignment="Center"
-            VerticalAlignment="Bottom"
-            Margin="590,0,0,20"
-            IsCircular="False"
-            InnerBorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
-            CenterText="③"
-            Click="CustomChannelButton_Click"
-            Visibility="Collapsed" />
+        <Grid x:Name="CustomChannelButtonsHost" />
     </Grid>
 </UserControl>

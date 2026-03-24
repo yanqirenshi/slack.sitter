@@ -40,6 +40,13 @@ namespace SlackSitter
             CustomOnly
         }
 
+        private sealed class CustomBoardRuntimeState
+        {
+            public string Name { get; init; } = string.Empty;
+            public List<string> SelectedChannelNames { get; init; } = new();
+            public List<ChannelWithMessages> Channels { get; set; } = new();
+        }
+
         private static readonly TimeSpan AutoRefreshInterval = TimeSpan.FromMinutes(5);
         private const int MaxConcurrentMessageLoads = 4;
         private readonly SlackService _slackService;
@@ -55,10 +62,11 @@ namespace SlackSitter
         private readonly ObservableCollection<ChannelWithMessages> _joinedDisplayedChannels;
         private readonly ObservableCollection<ChannelWithMessages> _notJoinedDisplayedChannels;
         private readonly ObservableCollection<ChannelWithMessages> _customDisplayedChannels;
-        private readonly List<string> _customSelectedChannelNames = new();
+        private readonly List<CustomBoardRuntimeState> _customBoards = new();
         private ObservableCollection<string> _logMessages;
         private Dictionary<string, string> _customEmojiMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         private ChannelDisplayFilter _currentChannelDisplayFilter = ChannelDisplayFilter.JoinedOnly;
+        private int _activeCustomBoardIndex = -1;
         private bool _isAutoRefreshEnabled = true;
         private bool _isRefreshingData;
 
@@ -731,7 +739,8 @@ namespace SlackSitter
             MainController.SetFilterButtonState(
                 _currentChannelDisplayFilter == ChannelDisplayFilter.JoinedOnly,
                 _currentChannelDisplayFilter == ChannelDisplayFilter.NotJoinedOnly,
-                _currentChannelDisplayFilter == ChannelDisplayFilter.CustomOnly);
+                _currentChannelDisplayFilter == ChannelDisplayFilter.CustomOnly,
+                _currentChannelDisplayFilter == ChannelDisplayFilter.CustomOnly ? _activeCustomBoardIndex : null);
         }
 
         private async void MainController_CircleIcon1Click(object sender, RoutedEventArgs e)
@@ -764,15 +773,27 @@ namespace SlackSitter
 
         private async void MainController_CustomChannelClick(object sender, RoutedEventArgs e)
         {
-            _currentChannelDisplayFilter = _currentChannelDisplayFilter == ChannelDisplayFilter.CustomOnly
-                ? ChannelDisplayFilter.All
-                : ChannelDisplayFilter.CustomOnly;
+            if (sender is not CircleActionButtonView button || button.Tag is not int customBoardIndex || customBoardIndex < 0 || customBoardIndex >= _customBoards.Count)
+            {
+                return;
+            }
+
+            if (_currentChannelDisplayFilter == ChannelDisplayFilter.CustomOnly && _activeCustomBoardIndex == customBoardIndex)
+            {
+                _currentChannelDisplayFilter = ChannelDisplayFilter.All;
+            }
+            else
+            {
+                _activeCustomBoardIndex = customBoardIndex;
+                _currentChannelDisplayFilter = ChannelDisplayFilter.CustomOnly;
+                ApplyActiveCustomBoard();
+            }
 
             RefreshDisplayedChannelsFromFilter();
             UpdateChannelFilterButtonState();
             await SaveCustomBoardStateAsync();
             AddLog(_currentChannelDisplayFilter == ChannelDisplayFilter.CustomOnly
-                ? "追加チャンネル表示に切り替えました"
+                ? $"追加チャンネル表示に切り替えました: {GetCustomBoardDisplayName(_customBoards[_activeCustomBoardIndex], _activeCustomBoardIndex)}"
                 : "すべてのチャンネル表示に戻しました");
         }
 
@@ -817,7 +838,7 @@ namespace SlackSitter
 
                 if (_currentChannelDisplayFilter == ChannelDisplayFilter.CustomOnly)
                 {
-                    ReplaceCustomChannels(_customSelectedChannelNames, refreshedChannels);
+                    ReplaceCustomChannels(_activeCustomBoardIndex, refreshedChannels);
                 }
                 else
                 {
@@ -849,19 +870,65 @@ namespace SlackSitter
             };
         }
 
-        private void ReplaceCustomChannels(IReadOnlyList<string> selectedChannelNames, IEnumerable<ChannelWithMessages> refreshedChannels)
+        private void ReplaceCustomChannels(int customBoardIndex, IEnumerable<ChannelWithMessages> refreshedChannels)
         {
-            var refreshedChannelMap = refreshedChannels.ToDictionary(channel => channel.Name, StringComparer.OrdinalIgnoreCase);
+            if (customBoardIndex < 0 || customBoardIndex >= _customBoards.Count)
+            {
+                return;
+            }
 
+            var customBoard = _customBoards[customBoardIndex];
+            customBoard.Channels = OrderCustomChannels(customBoard.SelectedChannelNames, refreshedChannels);
             _customDisplayedChannels.Clear();
+            foreach (var channel in customBoard.Channels)
+            {
+                _customDisplayedChannels.Add(channel);
+                AddLog($"チャンネル #{channel.Name}: {channel.Messages.Count} 件のメッセージを再取得");
+            }
+        }
+
+        private void ApplyActiveCustomBoard()
+        {
+            _customDisplayedChannels.Clear();
+
+            if (_activeCustomBoardIndex < 0 || _activeCustomBoardIndex >= _customBoards.Count)
+            {
+                return;
+            }
+
+            foreach (var channel in _customBoards[_activeCustomBoardIndex].Channels)
+            {
+                _customDisplayedChannels.Add(channel);
+            }
+        }
+
+        private static List<ChannelWithMessages> OrderCustomChannels(IReadOnlyList<string> selectedChannelNames, IEnumerable<ChannelWithMessages> channels)
+        {
+            var refreshedChannelMap = channels.ToDictionary(channel => channel.Name, StringComparer.OrdinalIgnoreCase);
+            var orderedChannels = new List<ChannelWithMessages>();
+
             foreach (var channelName in selectedChannelNames)
             {
-                if (refreshedChannelMap.TryGetValue(channelName, out var refreshedChannel))
+                if (refreshedChannelMap.TryGetValue(channelName, out var channel))
                 {
-                    _customDisplayedChannels.Add(refreshedChannel);
-                    AddLog($"チャンネル #{refreshedChannel.Name}: {refreshedChannel.Messages.Count} 件のメッセージを再取得");
+                    orderedChannels.Add(channel);
                 }
             }
+
+            return orderedChannels;
+        }
+
+        private void SyncCustomBoardButtons()
+        {
+            MainController.SetCustomChannelButtons(
+                _customBoards.Select((board, index) => GetCustomBoardDisplayName(board, index)).ToList(),
+                _currentChannelDisplayFilter == ChannelDisplayFilter.CustomOnly ? _activeCustomBoardIndex : null);
+            MainController.SetCustomChannelButtonVisible(_customBoards.Count > 0);
+        }
+
+        private static string GetCustomBoardDisplayName(CustomBoardRuntimeState board, int index)
+        {
+            return string.IsNullOrWhiteSpace(board.Name) ? $"カスタム {index + 1}" : board.Name;
         }
 
         private void UpsertChannelAcrossBoards(ChannelWithMessages refreshedChannel)
@@ -1113,6 +1180,13 @@ namespace SlackSitter
                 return;
             }
 
+            if (_customBoards.Count >= 10)
+            {
+                AddLog("追加できるカスタムボードは最大 10 件です");
+                MainController.HideAllPopups();
+                return;
+            }
+
             var selectedChannelNames = MainController.SelectedChannelNames;
             if (selectedChannelNames.Count == 0)
             {
@@ -1137,10 +1211,20 @@ namespace SlackSitter
             {
                 AddLog($"=== 追加チャンネルの取得開始 ({selectedChannels.Count} チャンネル) ===");
                 var customChannels = await LoadChannelBatchAsync(selectedChannels, _slackService.GetWorkspaceUrl());
-                ReplaceCustomChannels(selectedChannelNames, customChannels);
-                MainController.SetCustomChannelButtonVisible(true);
+                var customBoardIndex = _customBoards.Count;
+                var customBoard = new CustomBoardRuntimeState
+                {
+                    Name = MainController.PendingCustomBoardName,
+                    SelectedChannelNames = selectedChannelNames.ToList(),
+                    Channels = OrderCustomChannels(selectedChannelNames, customChannels)
+                };
+
+                _customBoards.Add(customBoard);
+                _activeCustomBoardIndex = customBoardIndex;
+                ApplyActiveCustomBoard();
                 _currentChannelDisplayFilter = ChannelDisplayFilter.CustomOnly;
                 RefreshDisplayedChannelsFromFilter();
+                SyncCustomBoardButtons();
                 UpdateChannelFilterButtonState();
                 await SaveCustomBoardStateAsync();
                 MainController.HideAllPopups();
@@ -1207,26 +1291,44 @@ namespace SlackSitter
         private async Task LoadPersistedCustomBoardStateAsync()
         {
             var state = await _customBoardStorageService.LoadAsync();
-            _customSelectedChannelNames.Clear();
-            _customSelectedChannelNames.AddRange(state.SelectedChannels
-                .Where(name => !string.IsNullOrWhiteSpace(name))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToList());
+            _customBoards.Clear();
+
+            foreach (var board in state.CustomBoards.Take(10))
+            {
+                var selectedChannels = board.SelectedChannels
+                    .Where(name => !string.IsNullOrWhiteSpace(name))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+
+                if (selectedChannels.Count == 0)
+                {
+                    continue;
+                }
+
+                _customBoards.Add(new CustomBoardRuntimeState
+                {
+                    Name = board.Name,
+                    SelectedChannelNames = selectedChannels
+                });
+            }
+
+            _activeCustomBoardIndex = _customBoards.Count == 0
+                ? -1
+                : Math.Clamp(state.ActiveCustomBoardIndex, 0, _customBoards.Count - 1);
 
             MainController.ResetPlusPopupInputs();
-            MainController.SetCustomChannelButtonVisible(state.IsVisible && _customSelectedChannelNames.Count > 0);
-            _currentChannelDisplayFilter = ParsePersistedFilter(state.ActiveFilter, _customSelectedChannelNames.Count > 0);
+            SyncCustomBoardButtons();
+            _currentChannelDisplayFilter = ParsePersistedFilter(state.ActiveFilter, _customBoards.Count > 0);
             UpdateChannelFilterButtonState();
             RefreshDisplayedChannelsFromFilter();
         }
 
         private async Task RestorePersistedCustomBoardAsync(string? workspaceUrl)
         {
-            var selectedChannelNames = _customSelectedChannelNames;
-            if (selectedChannelNames.Count == 0)
+            if (_customBoards.Count == 0)
             {
                 _customDisplayedChannels.Clear();
-                MainController.SetCustomChannelButtonVisible(false);
+                SyncCustomBoardButtons();
                 if (_currentChannelDisplayFilter == ChannelDisplayFilter.CustomOnly)
                 {
                     _currentChannelDisplayFilter = ChannelDisplayFilter.JoinedOnly;
@@ -1238,27 +1340,31 @@ namespace SlackSitter
                 return;
             }
 
-            var selectedChannels = selectedChannelNames
-                .Where(name => _allUnarchivedChannelsByName.TryGetValue(name, out _))
-                .Select(name => _allUnarchivedChannelsByName[name])
-                .ToList();
-
-            if (selectedChannels.Count == 0)
+            foreach (var customBoard in _customBoards)
             {
-                _customDisplayedChannels.Clear();
-                return;
+                var selectedChannels = customBoard.SelectedChannelNames
+                    .Where(name => _allUnarchivedChannelsByName.TryGetValue(name, out _))
+                    .Select(name => _allUnarchivedChannelsByName[name])
+                    .ToList();
+
+                customBoard.Channels = selectedChannels.Count == 0
+                    ? new List<ChannelWithMessages>()
+                    : OrderCustomChannels(customBoard.SelectedChannelNames, await LoadChannelBatchAsync(selectedChannels, workspaceUrl));
             }
 
-            var customChannels = await LoadChannelBatchAsync(selectedChannels, workspaceUrl);
-            ReplaceCustomChannels(selectedChannelNames, customChannels);
-            MainController.SetCustomChannelButtonVisible(true);
+            ApplyActiveCustomBoard();
+            SyncCustomBoardButtons();
         }
 
         private Task SaveCustomBoardStateAsync()
         {
             return _customBoardStorageService.SaveAsync(
-                _customSelectedChannelNames,
-                _customSelectedChannelNames.Count > 0,
+                _customBoards.Select(board => new CustomBoardStorageService.CustomBoardDefinition
+                {
+                    Name = board.Name,
+                    SelectedChannels = board.SelectedChannelNames.ToList()
+                }),
+                _activeCustomBoardIndex,
                 _currentChannelDisplayFilter.ToString());
         }
 
