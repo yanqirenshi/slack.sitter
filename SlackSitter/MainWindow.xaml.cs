@@ -44,8 +44,8 @@ namespace SlackSitter
 
         private sealed class CustomBoardRuntimeState
         {
-            public string Name { get; init; } = string.Empty;
-            public List<string> SelectedChannelNames { get; init; } = new();
+            public string Name { get; set; } = string.Empty;
+            public List<string> SelectedChannelNames { get; set; } = new();
             public List<ChannelWithMessages> Channels { get; set; } = new();
         }
 
@@ -1167,7 +1167,16 @@ namespace SlackSitter
 
         private void MainController_GearIconClick(object sender, RoutedEventArgs e)
         {
-            AddLog("歯車ボタンは未実装です");
+            if (_activeCustomBoardIndex < 0 || _activeCustomBoardIndex >= _customBoards.Count)
+            {
+                MainController.SetGearPopupInputs(string.Empty, Array.Empty<string>());
+                return;
+            }
+
+            var customBoard = _customBoards[_activeCustomBoardIndex];
+            MainController.SetGearPopupInputs(
+                GetCustomBoardDisplayName(customBoard, _activeCustomBoardIndex),
+                customBoard.SelectedChannelNames);
         }
 
         private void MainController_PlusIconClick(object sender, RoutedEventArgs e)
@@ -1231,6 +1240,61 @@ namespace SlackSitter
                 await SaveCustomBoardStateAsync();
                 MainController.HideAllPopups();
                 AddLog("=== 追加チャンネルの取得完了 ===");
+            }
+            finally
+            {
+                MainController.SetLoadingIndicatorIdle();
+            }
+        }
+
+        private async void MainController_UpdateCustomBoardRequested(object sender, RoutedEventArgs e)
+        {
+            if (_activeCustomBoardIndex < 0 || _activeCustomBoardIndex >= _customBoards.Count)
+            {
+                AddLog("変更対象のカスタムボードが選択されていません");
+                return;
+            }
+
+            var selectedChannelNames = MainController.SelectedChannelNames;
+            if (selectedChannelNames.Count == 0)
+            {
+                AddLog("変更対象のチャンネルが選択されていません");
+                return;
+            }
+
+            var selectedChannels = selectedChannelNames
+                .Where(name => _allUnarchivedChannelsByName.TryGetValue(name, out _))
+                .Select(name => _allUnarchivedChannelsByName[name])
+                .ToList();
+
+            if (selectedChannels.Count == 0)
+            {
+                AddLog("変更対象のチャンネル情報が見つかりませんでした");
+                return;
+            }
+
+            MainController.ShowLoadingIndicatorBusy();
+
+            try
+            {
+                AddLog($"=== カスタムボードの変更開始 ({selectedChannels.Count} チャンネル) ===");
+                var customChannels = await LoadChannelBatchAsync(selectedChannels, _slackService.GetWorkspaceUrl());
+                var customBoard = _customBoards[_activeCustomBoardIndex];
+                customBoard.Name = NormalizeCustomBoardName(MainController.PendingGearBoardName);
+                customBoard.SelectedChannelNames = selectedChannelNames.ToList();
+                customBoard.Channels = OrderCustomChannels(selectedChannelNames, customChannels);
+
+                if (_currentChannelDisplayFilter == ChannelDisplayFilter.CustomOnly)
+                {
+                    ApplyActiveCustomBoard();
+                    RefreshDisplayedChannelsFromFilter();
+                }
+
+                SyncCustomBoardButtons();
+                UpdateChannelFilterButtonState();
+                await SaveCustomBoardStateAsync();
+                MainController.HideAllPopups();
+                AddLog($"=== カスタムボードの変更完了: {GetCustomBoardDisplayName(customBoard, _activeCustomBoardIndex)} ===");
             }
             finally
             {

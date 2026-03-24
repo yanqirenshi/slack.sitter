@@ -28,6 +28,7 @@ namespace SlackSitter.Views
         public event RoutedEventHandler? CircleIcon2Click;
         public event RoutedEventHandler? CustomChannelClick;
         public event RoutedEventHandler? AddChannelsRequested;
+        public event RoutedEventHandler? UpdateCustomBoardRequested;
         public event RoutedEventHandler? CopyLogRequested;
         public event RoutedEventHandler? RefreshRequested;
         public event TypedEventHandler<UserPopupView, string>? UpdateTokenRequested;
@@ -37,6 +38,9 @@ namespace SlackSitter.Views
         public ObservableCollection<string> FilteredAvailableChannels { get; } = new();
         public ObservableCollection<string> SelectedChannels { get; } = new();
         public string PendingCustomBoardName => PlusChannelNameTextBox.Text?.Trim() ?? string.Empty;
+        public string PendingGearBoardName => GearChannelNameTextBox.Text?.Trim() ?? string.Empty;
+        private string _gearOriginalBoardName = string.Empty;
+        private List<string> _gearOriginalSelectedChannels = new();
 
         public MainControllerView()
         {
@@ -55,7 +59,7 @@ namespace SlackSitter.Views
             UserPopupBorder.AutoRefreshToggleRequested += UserPopupBorder_AutoRefreshToggleRequested;
             ActivityLogPopupBorder.CopyLogRequested += LogPopupBorder_CopyLogRequested;
             SelectedChannels.CollectionChanged += SelectedChannels_CollectionChanged;
-            UpdateAddButtonState();
+            UpdateActionButtonState();
         }
 
         public void SetLogItemsSource(object itemsSource)
@@ -82,6 +86,23 @@ namespace SlackSitter.Views
             SelectedChannelsListView.SelectedItem = null;
             SelectedChannels.Clear();
             RefreshAvailableChannels();
+            UpdateActionButtonState();
+        }
+
+        public void SetGearPopupInputs(string customBoardName, IEnumerable<string> channelNames)
+        {
+            _gearOriginalBoardName = customBoardName?.Trim() ?? string.Empty;
+            _gearOriginalSelectedChannels = channelNames
+                .Where(name => !string.IsNullOrWhiteSpace(name))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            GearChannelNameTextBox.Text = customBoardName;
+            GearChannelFilterTextBox.Text = string.Empty;
+            GearAvailableChannelsListView.SelectedItem = null;
+            GearSelectedChannelsListView.SelectedItem = null;
+            SetSelectedChannels(channelNames);
+            UpdateActionButtonState();
         }
 
         public void SetSelectedChannels(IEnumerable<string> channelNames)
@@ -169,6 +190,7 @@ namespace SlackSitter.Views
 
         public void HideAllPopups()
         {
+            GearPopupBorder.Visibility = Visibility.Collapsed;
             PlusPopupBorder.Visibility = Visibility.Collapsed;
             UserPopupBorder.Visibility = Visibility.Collapsed;
             ActivityLogPopupBorder.Visibility = Visibility.Collapsed;
@@ -213,6 +235,8 @@ namespace SlackSitter.Views
             _areCustomChannelButtonsVisible = false;
             CustomChannelButtonsHost.Children.Clear();
             _customChannelButtons.Clear();
+            _gearOriginalBoardName = string.Empty;
+            _gearOriginalSelectedChannels.Clear();
             LogIconButton.Visibility = Visibility.Collapsed;
             LoadingIndicatorButton.Visibility = Visibility.Collapsed;
             LoadingIndicatorButton.InnerBorderBrush = _defaultAccentBrush;
@@ -276,7 +300,7 @@ namespace SlackSitter.Views
 
         private void LogIconButton_Click(object sender, RoutedEventArgs e)
         {
-            TogglePopup(ActivityLogPopupBorder, sender as CircleActionButtonView, UserPopupBorder, PlusPopupBorder);
+            TogglePopup(ActivityLogPopupBorder, sender as CircleActionButtonView, UserPopupBorder, PlusPopupBorder, GearPopupBorder);
         }
 
         private void LoadingIndicatorButton_Click(object sender, RoutedEventArgs e)
@@ -287,11 +311,12 @@ namespace SlackSitter.Views
 
         private void UserAvatarButton_Click(object sender, RoutedEventArgs e)
         {
-            TogglePopup(UserPopupBorder, sender as CircleActionButtonView, ActivityLogPopupBorder, PlusPopupBorder);
+            TogglePopup(UserPopupBorder, sender as CircleActionButtonView, ActivityLogPopupBorder, PlusPopupBorder, GearPopupBorder);
         }
 
         private void GearIconButton_Click(object sender, RoutedEventArgs e)
         {
+            TogglePopup(GearPopupBorder, sender as CircleActionButtonView, UserPopupBorder, ActivityLogPopupBorder, PlusPopupBorder);
             GearIconClick?.Invoke(sender, e);
         }
 
@@ -302,18 +327,24 @@ namespace SlackSitter.Views
                 ResetPlusPopupInputs();
             }
 
-            TogglePopup(PlusPopupBorder, sender as CircleActionButtonView, UserPopupBorder, ActivityLogPopupBorder);
+            TogglePopup(PlusPopupBorder, sender as CircleActionButtonView, UserPopupBorder, ActivityLogPopupBorder, GearPopupBorder);
             PlusIconClick?.Invoke(sender, e);
         }
 
         private void PlusChannelFilterTextBox_TextChanged(object sender, TextChangedEventArgs e)
         {
             RefreshAvailableChannels();
+            UpdateActionButtonState();
+        }
+
+        private void GearChannelNameTextBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            UpdateActionButtonState();
         }
 
         private void AvailableChannelsListView_DoubleTapped(object sender, Microsoft.UI.Xaml.Input.DoubleTappedRoutedEventArgs e)
         {
-            if (AvailableChannelsListView.SelectedItem is not string channelName)
+            if (sender is not ListView listView || listView.SelectedItem is not string channelName)
             {
                 return;
             }
@@ -324,35 +355,47 @@ namespace SlackSitter.Views
             }
 
             SelectedChannels.Add(channelName);
-            AvailableChannelsListView.SelectedItem = null;
+            listView.SelectedItem = null;
             RefreshAvailableChannels();
         }
 
         private void SelectedChannelsListView_DoubleTapped(object sender, Microsoft.UI.Xaml.Input.DoubleTappedRoutedEventArgs e)
         {
-            if (SelectedChannelsListView.SelectedItem is not string channelName)
+            if (sender is not ListView listView || listView.SelectedItem is not string channelName)
             {
                 return;
             }
 
             SelectedChannels.Remove(channelName);
-            SelectedChannelsListView.SelectedItem = null;
+            listView.SelectedItem = null;
             RefreshAvailableChannels();
         }
 
         private void SelectedChannels_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
         {
-            UpdateAddButtonState();
+            UpdateActionButtonState();
         }
 
         private void PlusCancelButton_Click(object sender, RoutedEventArgs e)
         {
             PlusPopupBorder.Visibility = Visibility.Collapsed;
+            UpdateActionButtonState();
+        }
+
+        private void GearCancelButton_Click(object sender, RoutedEventArgs e)
+        {
+            GearPopupBorder.Visibility = Visibility.Collapsed;
+            UpdateActionButtonState();
         }
 
         private void AddChannelsButton_Click(object sender, RoutedEventArgs e)
         {
             AddChannelsRequested?.Invoke(this, e);
+        }
+
+        private void GearUpdateChannelsButton_Click(object sender, RoutedEventArgs e)
+        {
+            UpdateCustomBoardRequested?.Invoke(this, e);
         }
 
         private void CircleIcon1Button_Click(object sender, RoutedEventArgs e)
@@ -423,6 +466,7 @@ namespace SlackSitter.Views
             if (popup.Visibility == Visibility.Visible)
             {
                 popup.Visibility = Visibility.Collapsed;
+                UpdateActionButtonState();
                 return;
             }
 
@@ -439,6 +483,8 @@ namespace SlackSitter.Views
             {
                 popup.Visibility = Visibility.Visible;
             }
+
+            UpdateActionButtonState();
         }
 
         private void ShowPopupAtButton(FrameworkElement popup, CircleActionButtonView button)
@@ -490,7 +536,9 @@ namespace SlackSitter.Views
 
         private void RefreshAvailableChannels()
         {
-            var filter = PlusChannelFilterTextBox?.Text?.Trim() ?? string.Empty;
+            var filter = GearPopupBorder.Visibility == Visibility.Visible
+                ? GearChannelFilterTextBox?.Text?.Trim() ?? string.Empty
+                : PlusChannelFilterTextBox?.Text?.Trim() ?? string.Empty;
             var selectedChannelSet = SelectedChannels.ToHashSet(StringComparer.OrdinalIgnoreCase);
 
             var filteredChannels = _allAvailableChannels
@@ -505,9 +553,39 @@ namespace SlackSitter.Views
             }
         }
 
-        private void UpdateAddButtonState()
+        private void UpdateActionButtonState()
         {
-            AddChannelsButton.IsEnabled = SelectedChannels.Count > 0;
+            AddChannelsButton.IsEnabled = PlusPopupBorder.Visibility == Visibility.Visible && SelectedChannels.Count > 0;
+            GearUpdateChannelsButton.IsEnabled = GearPopupBorder.Visibility == Visibility.Visible && HasGearPopupChanges();
+        }
+
+        private bool HasGearPopupChanges()
+        {
+            if (SelectedChannels.Count == 0)
+            {
+                return false;
+            }
+
+            var currentName = PendingGearBoardName;
+            if (!string.Equals(currentName, _gearOriginalBoardName, StringComparison.Ordinal))
+            {
+                return true;
+            }
+
+            if (SelectedChannels.Count != _gearOriginalSelectedChannels.Count)
+            {
+                return true;
+            }
+
+            for (int i = 0; i < SelectedChannels.Count; i++)
+            {
+                if (!string.Equals(SelectedChannels[i], _gearOriginalSelectedChannels[i], StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private static Brush GetThemeBrush(string resourceKey, Brush fallback)

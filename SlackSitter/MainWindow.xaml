@@ -69,6 +69,7 @@
                 CircleIcon2Click="MainController_CircleIcon2Click"
                 CustomChannelClick="MainController_CustomChannelClick"
                 AddChannelsRequested="MainController_AddChannelsRequested"
+                UpdateCustomBoardRequested="MainController_UpdateCustomBoardRequested"
                 CopyLogRequested="LogPopupView_CopyLogRequested"
                 RefreshRequested="LogPopupView_RefreshRequested"
                 UpdateTokenRequested="UserPopupView_UpdateTokenRequested"
