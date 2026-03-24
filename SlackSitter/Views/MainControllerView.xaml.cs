@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
+using System.Globalization;
 using System.Linq;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -236,7 +237,7 @@ namespace SlackSitter.Views
                     Margin = new Thickness(CustomChannelButtonsBaseOffset + (CustomChannelButtonSpacing * i), 0, 0, 20),
                     InnerBorderBrush = _defaultAccentBrush,
                     ContentForeground = _defaultPrimaryTextBrush,
-                    CenterText = GetCustomBoardButtonText(i),
+                    CenterText = GetCustomBoardButtonText(customBoardNames[i]),
                     Tag = i
                 };
 
@@ -391,10 +392,10 @@ namespace SlackSitter.Views
             }
         }
 
-        private static string GetCustomBoardButtonText(int index)
+        private static string GetCustomBoardButtonText(string? customBoardName)
         {
-            string[] labels = ["③", "④", "⑤", "⑥", "⑦", "⑧", "⑨", "⑩", "⑪", "⑫"];
-            return index >= 0 && index < labels.Length ? labels[index] : (index + 3).ToString();
+            var normalizedName = string.IsNullOrWhiteSpace(customBoardName) ? "?" : customBoardName.Trim();
+            return StringInfo.GetNextTextElement(normalizedName);
         }
 
         private void UserPopupBorder_UpdateTokenRequested(UserPopupView sender, string newAccessToken)

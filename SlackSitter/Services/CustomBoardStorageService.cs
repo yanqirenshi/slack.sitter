@@ -10,6 +10,7 @@ namespace SlackSitter.Services
     public class CustomBoardStorageService
     {
         private const string FileName = "custom-board.json";
+        private const string DefaultCustomBoardName = "????????";
         private readonly string _filePath;
 
         public class CustomBoardState
@@ -55,10 +56,15 @@ namespace SlackSitter.Services
                 {
                     state.CustomBoards.Add(new CustomBoardDefinition
                     {
-                        Name = string.Empty,
+                        Name = DefaultCustomBoardName,
                         SelectedChannels = state.SelectedChannels
                     });
                     state.ActiveCustomBoardIndex = state.IsVisible ? 0 : -1;
+                }
+
+                foreach (var board in state.CustomBoards)
+                {
+                    board.Name = NormalizeBoardName(board.Name);
                 }
 
                 return state;
@@ -86,7 +92,7 @@ namespace SlackSitter.Services
                     CustomBoards = customBoards
                         .Select(board => new CustomBoardDefinition
                         {
-                            Name = board.Name?.Trim() ?? string.Empty,
+                            Name = NormalizeBoardName(board.Name),
                             SelectedChannels = board.SelectedChannels
                                 .Where(name => !string.IsNullOrWhiteSpace(name))
                                 .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -113,6 +119,11 @@ namespace SlackSitter.Services
         public string GetFilePath()
         {
             return _filePath;
+        }
+
+        private static string NormalizeBoardName(string? name)
+        {
+            return string.IsNullOrWhiteSpace(name) ? DefaultCustomBoardName : name.Trim();
         }
     }
 }

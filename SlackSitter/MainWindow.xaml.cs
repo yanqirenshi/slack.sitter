@@ -32,6 +32,8 @@ namespace SlackSitter
 {
     public sealed partial class MainWindow : Window
     {
+        private const string DefaultCustomBoardName = "????????";
+
         private enum ChannelDisplayFilter
         {
             All,
@@ -928,7 +930,7 @@ namespace SlackSitter
 
         private static string GetCustomBoardDisplayName(CustomBoardRuntimeState board, int index)
         {
-            return string.IsNullOrWhiteSpace(board.Name) ? $"カスタム {index + 1}" : board.Name;
+            return NormalizeCustomBoardName(board.Name);
         }
 
         private void UpsertChannelAcrossBoards(ChannelWithMessages refreshedChannel)
@@ -1214,7 +1216,7 @@ namespace SlackSitter
                 var customBoardIndex = _customBoards.Count;
                 var customBoard = new CustomBoardRuntimeState
                 {
-                    Name = MainController.PendingCustomBoardName,
+                    Name = NormalizeCustomBoardName(MainController.PendingCustomBoardName),
                     SelectedChannelNames = selectedChannelNames.ToList(),
                     Channels = OrderCustomChannels(selectedChannelNames, customChannels)
                 };
@@ -1307,7 +1309,7 @@ namespace SlackSitter
 
                 _customBoards.Add(new CustomBoardRuntimeState
                 {
-                    Name = board.Name,
+                    Name = NormalizeCustomBoardName(board.Name),
                     SelectedChannelNames = selectedChannels
                 });
             }
@@ -1381,6 +1383,11 @@ namespace SlackSitter
             }
 
             return filter;
+        }
+
+        private static string NormalizeCustomBoardName(string? name)
+        {
+            return string.IsNullOrWhiteSpace(name) ? DefaultCustomBoardName : name.Trim();
         }
     }
 }
