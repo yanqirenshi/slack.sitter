@@ -21,6 +21,7 @@
             <converters:BooleanToHeaderBrushConverter x:Key="BooleanToHeaderBrushConverter" />
             <converters:SlackMessageTextConverter x:Key="SlackMessageTextConverter" />
         </Grid.Resources>
+
         <views:AuthenticationView
             x:Name="AuthenticationPanel"
             Visibility="Collapsed"
@@ -75,6 +76,37 @@
                 UpdateTokenRequested="UserPopupView_UpdateTokenRequested"
                 LogoutRequested="UserPopupView_LogoutRequested"
                 AutoRefreshToggleRequested="UserPopupView_AutoRefreshToggleRequested" />
+        </Grid>
+
+        <Grid
+            x:Name="StartupSplashOverlay"
+            Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+            <StackPanel
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Spacing="20">
+                <Border
+                    Width="220"
+                    Height="220"
+                    CornerRadius="40"
+                    Background="Transparent">
+                    <Image
+                        x:Name="StartupSplashImage"
+                        Stretch="Uniform" />
+                </Border>
+
+                <TextBlock
+                    HorizontalAlignment="Center"
+                    FontSize="42"
+                    FontWeight="Bold"
+                    Text="SlackSitter" />
+
+                <ProgressRing
+                    IsActive="True"
+                    Width="48"
+                    Height="48"
+                    HorizontalAlignment="Center" />
+            </StackPanel>
         </Grid>
     </Grid>
 </Window>

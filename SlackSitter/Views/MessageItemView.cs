@@ -11,6 +11,7 @@ namespace SlackSitter.Views
     public sealed partial class MessageItemView : UserControl
     {
         private static readonly TimestampToDateTimeConverter TimestampConverter = new TimestampToDateTimeConverter();
+        private const double FixedMessageCardWidth = 236d;
 
         public static readonly DependencyProperty MessageProperty =
             DependencyProperty.Register(
@@ -102,7 +103,9 @@ namespace SlackSitter.Views
                 BorderBrush = GetBrush("CardStrokeColorDefaultBrush"),
                 BorderThickness = new Thickness(1),
                 CornerRadius = new CornerRadius(4),
-                Padding = new Thickness(8)
+                Padding = new Thickness(8),
+                Width = FixedMessageCardWidth,
+                HorizontalAlignment = HorizontalAlignment.Left
             };
             Grid.SetRow(messageCard, 1);
             Grid.SetColumn(messageCard, 1);
@@ -199,14 +202,15 @@ namespace SlackSitter.Views
                     Margin = new Thickness(0, 8, 0, 0)
                 };
                 Grid.SetRow(repliesStack, 3);
-                Grid.SetColumn(repliesStack, 1);
+                Grid.SetColumn(repliesStack, 0);
+                Grid.SetColumnSpan(repliesStack, 2);
 
                 foreach (var reply in Message.Replies)
                 {
                     var replyItemView = new MessageItemView
                     {
                         Message = reply,
-                        Margin = new Thickness(16, 0, 0, 0)
+                        Margin = new Thickness(28, 0, 0, 0)
                     };
                     replyItemView.MessageRichTextBlockLoadedRequested += (_, richTextBlock) => MessageRichTextBlockLoadedRequested?.Invoke(this, richTextBlock);
                     replyItemView.MessageAvatarBorderLoadedRequested += (_, border) => MessageAvatarBorderLoadedRequested?.Invoke(this, border);

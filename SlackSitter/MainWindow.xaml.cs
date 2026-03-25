@@ -71,12 +71,14 @@ namespace SlackSitter
         private int _activeCustomBoardIndex = -1;
         private bool _isAutoRefreshEnabled = true;
         private bool _isRefreshingData;
+        private bool _isStartupSplashVisible = true;
 
         public MainWindow()
         {
             StartupTrace.Log("MainWindow constructor entered");
             InitializeComponent();
             StartupTrace.Log("MainWindow InitializeComponent completed");
+            InitializeStartupSplashImage();
             _slackService = new SlackService();
             _settingsService = new SettingsService();
             _customBoardStorageService = new CustomBoardStorageService();
@@ -111,6 +113,28 @@ namespace SlackSitter
         {
             var timestamp = DateTime.Now.ToString("HH:mm:ss");
             _logMessages.Add($"[{timestamp}] {message}");
+        }
+
+        private void InitializeStartupSplashImage()
+        {
+            var imagePath = Path.Combine(AppContext.BaseDirectory, "Assets", "icon.png");
+            if (!System.IO.File.Exists(imagePath))
+            {
+                return;
+            }
+
+            StartupSplashImage.Source = new BitmapImage(new Uri(imagePath));
+        }
+
+        private void HideStartupSplash()
+        {
+            if (!_isStartupSplashVisible)
+            {
+                return;
+            }
+
+            StartupSplashOverlay.Visibility = Visibility.Collapsed;
+            _isStartupSplashVisible = false;
         }
 
         private static double ParseSlackTimestamp(string? timestamp)
@@ -1028,6 +1052,7 @@ namespace SlackSitter
             else
             {
                 AuthenticationPanel.Visibility = Visibility.Visible;
+                HideStartupSplash();
             }
         }
 
@@ -1057,12 +1082,14 @@ namespace SlackSitter
                 await LoadPersistedCustomBoardStateAsync();
 
                 await RefreshWorkspaceDataAsync();
+                HideStartupSplash();
             }
             else
             {
                 AuthenticationPanel.StatusMessage = "認証に失敗しました。トークンを確認してください。";
                 AuthenticationPanel.StatusBrush = new SolidColorBrush(Microsoft.UI.Colors.Red);
                 UpdateAutoRefreshTimerState();
+                HideStartupSplash();
             }
         }
 

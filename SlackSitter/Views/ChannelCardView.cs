@@ -3,6 +3,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Media;
 using Windows.Foundation;
+using System.Linq;
 using SlackSitter.Converters;
 using SlackSitter.Models;
 
@@ -11,6 +12,8 @@ namespace SlackSitter.Views
     public sealed class ChannelCardView : UserControl
     {
         private static readonly BooleanToHeaderBrushConverter HeaderBrushConverter = new BooleanToHeaderBrushConverter();
+        private const double DefaultCardWidth = 300d;
+        private const double ThreadedCardWidth = 356d;
 
         public static readonly DependencyProperty ChannelProperty =
             DependencyProperty.Register(
@@ -32,7 +35,7 @@ namespace SlackSitter.Views
 
         public ChannelCardView()
         {
-            Width = 300;
+            Width = DefaultCardWidth;
             HorizontalAlignment = HorizontalAlignment.Left;
             VerticalAlignment = VerticalAlignment.Stretch;
         }
@@ -53,13 +56,19 @@ namespace SlackSitter.Views
                 return;
             }
 
+            var cardWidth = Channel.Messages.Any(message => message.Replies.Count > 0)
+                ? ThreadedCardWidth
+                : DefaultCardWidth;
+
+            Width = cardWidth;
+
             var outerBorder = new Border
             {
                 Background = GetBrush("LayerFillColorDefaultBrush"),
                 BorderBrush = GetBrush("CardStrokeColorDefaultBrush"),
                 BorderThickness = new Thickness(1),
                 CornerRadius = new CornerRadius(8),
-                Width = 300,
+                Width = cardWidth,
                 HorizontalAlignment = HorizontalAlignment.Left,
                 VerticalAlignment = VerticalAlignment.Stretch
             };
