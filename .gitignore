@@ -102,3 +102,6 @@ _ReSharper*/
 *.user
 *.userosscache
 *.sln.docstates
+
+# Local tool settings
+.claude/settings.local.json
