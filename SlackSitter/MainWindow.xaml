@@ -31,33 +31,21 @@
             <views:ChannelBoardView
                 x:Name="AllChannelBoard"
                 Visibility="Collapsed"
-                MessageRichTextBlockLoadedRequested="ChannelCardView_MessageRichTextBlockLoadedRequested"
-                MessageAvatarBorderLoadedRequested="ChannelCardView_MessageAvatarBorderLoadedRequested"
-                ReactionBorderLoadedRequested="ChannelCardView_ReactionBorderLoadedRequested"
                 ShowImageRequested="ChannelCardView_ShowImageRequested" />
 
             <views:ChannelBoardView
                 x:Name="JoinedChannelBoard"
                 Visibility="Visible"
-                MessageRichTextBlockLoadedRequested="ChannelCardView_MessageRichTextBlockLoadedRequested"
-                MessageAvatarBorderLoadedRequested="ChannelCardView_MessageAvatarBorderLoadedRequested"
-                ReactionBorderLoadedRequested="ChannelCardView_ReactionBorderLoadedRequested"
                 ShowImageRequested="ChannelCardView_ShowImageRequested" />
 
             <views:ChannelBoardView
                 x:Name="NotJoinedChannelBoard"
                 Visibility="Collapsed"
-                MessageRichTextBlockLoadedRequested="ChannelCardView_MessageRichTextBlockLoadedRequested"
-                MessageAvatarBorderLoadedRequested="ChannelCardView_MessageAvatarBorderLoadedRequested"
-                ReactionBorderLoadedRequested="ChannelCardView_ReactionBorderLoadedRequested"
                 ShowImageRequested="ChannelCardView_ShowImageRequested" />
 
             <views:ChannelBoardView
                 x:Name="CustomChannelBoard"
                 Visibility="Collapsed"
-                MessageRichTextBlockLoadedRequested="ChannelCardView_MessageRichTextBlockLoadedRequested"
-                MessageAvatarBorderLoadedRequested="ChannelCardView_MessageAvatarBorderLoadedRequested"
-                ReactionBorderLoadedRequested="ChannelCardView_ReactionBorderLoadedRequested"
                 ShowImageRequested="ChannelCardView_ShowImageRequested" />
 
             <views:StatusPanelView x:Name="StatusPanel" />

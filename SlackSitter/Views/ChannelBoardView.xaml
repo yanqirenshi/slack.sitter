@@ -7,28 +7,26 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
+    <UserControl.Resources>
+        <DataTemplate x:Key="ChannelCardTemplate">
+            <views:ChannelCardView
+                Channel="{Binding}"
+                ShowImageRequested="ChannelCardView_ShowImageRequested" />
+        </DataTemplate>
+    </UserControl.Resources>
+
     <ScrollViewer
         x:Name="ChannelScrollViewer"
         HorizontalScrollBarVisibility="Auto"
         VerticalScrollBarVisibility="Disabled"
         Padding="20"
         SizeChanged="ChannelScrollViewer_SizeChanged">
-        <ItemsControl x:Name="TimesChannelsItemsControl">
-            <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate>
-                    <StackPanel Orientation="Horizontal" Spacing="16" />
-                </ItemsPanelTemplate>
-            </ItemsControl.ItemsPanel>
-            <ItemsControl.ItemTemplate>
-                <DataTemplate>
-                    <views:ChannelCardView
-                        Channel="{Binding}"
-                        MessageRichTextBlockLoadedRequested="ChannelCardView_MessageRichTextBlockLoadedRequested"
-                        MessageAvatarBorderLoadedRequested="ChannelCardView_MessageAvatarBorderLoadedRequested"
-                        ReactionBorderLoadedRequested="ChannelCardView_ReactionBorderLoadedRequested"
-                        ShowImageRequested="ChannelCardView_ShowImageRequested" />
-                </DataTemplate>
-            </ItemsControl.ItemTemplate>
-        </ItemsControl>
+        <ItemsRepeater
+            x:Name="TimesChannelsItemsRepeater"
+            ItemTemplate="{StaticResource ChannelCardTemplate}">
+            <ItemsRepeater.Layout>
+                <views:HorizontalVirtualizingLayout Spacing="16" EstimatedItemWidth="356" />
+            </ItemsRepeater.Layout>
+        </ItemsRepeater>
     </ScrollViewer>
 </UserControl>

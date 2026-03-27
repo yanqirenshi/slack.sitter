@@ -28,9 +28,9 @@ namespace SlackSitter.Views
             set => SetValue(ChannelProperty, value);
         }
 
-        public event TypedEventHandler<ChannelCardView, RichTextBlock>? MessageRichTextBlockLoadedRequested;
-        public event TypedEventHandler<ChannelCardView, Border>? MessageAvatarBorderLoadedRequested;
-        public event TypedEventHandler<ChannelCardView, Border>? ReactionBorderLoadedRequested;
+        /// <summary>
+        /// 画像表示イベント（ユーザー操作起点のため維持）
+        /// </summary>
         public event TypedEventHandler<ChannelCardView, Button>? ShowImageRequested;
 
         public ChannelCardView()
@@ -115,9 +115,7 @@ namespace SlackSitter.Views
                 {
                     Message = message
                 };
-                messageItemView.MessageRichTextBlockLoadedRequested += MessageItemView_MessageRichTextBlockLoadedRequested;
-                messageItemView.MessageAvatarBorderLoadedRequested += MessageItemView_MessageAvatarBorderLoadedRequested;
-                messageItemView.ReactionBorderLoadedRequested += MessageItemView_ReactionBorderLoadedRequested;
+                // ShowImageRequested のみリレー（ユーザー操作起点のため維持）
                 messageItemView.ShowImageRequested += MessageItemView_ShowImageRequested;
                 messagesStack.Children.Add(messageItemView);
             }
@@ -127,21 +125,6 @@ namespace SlackSitter.Views
 
             outerBorder.Child = rootGrid;
             Content = outerBorder;
-        }
-
-        private void MessageItemView_MessageRichTextBlockLoadedRequested(MessageItemView sender, RichTextBlock richTextBlock)
-        {
-            MessageRichTextBlockLoadedRequested?.Invoke(this, richTextBlock);
-        }
-
-        private void MessageItemView_MessageAvatarBorderLoadedRequested(MessageItemView sender, Border border)
-        {
-            MessageAvatarBorderLoadedRequested?.Invoke(this, border);
-        }
-
-        private void MessageItemView_ReactionBorderLoadedRequested(MessageItemView sender, Border border)
-        {
-            ReactionBorderLoadedRequested?.Invoke(this, border);
         }
 
         private void MessageItemView_ShowImageRequested(MessageItemView sender, Button button)

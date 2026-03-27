@@ -213,141 +213,8 @@ namespace SlackSitter
                 : Visibility.Collapsed;
         }
 
-        private void MessageRichTextBlock_Loaded(object sender, RoutedEventArgs e)
-        {
-            if (sender is not RichTextBlock richTextBlock)
-            {
-                return;
-            }
-
-            if (richTextBlock.Tag is not MessageDisplayItem message)
-            {
-                return;
-            }
-
-            richTextBlock.Blocks.Clear();
-
-            var paragraph = new Paragraph();
-
-            foreach (var segment in message.Segments)
-            {
-                switch (segment.Type)
-                {
-                    case MessageInlineSegmentType.Text:
-                        AppendPlainTextInline(paragraph, segment);
-                        break;
-                    case MessageInlineSegmentType.Link:
-                        if (segment.Uri != null)
-                        {
-                            var hyperlink = new Hyperlink
-                            {
-                                NavigateUri = segment.Uri
-                            };
-                            hyperlink.Inlines.Add(CreateStyledRun(segment));
-                            paragraph.Inlines.Add(hyperlink);
-                        }
-                        else
-                        {
-                            AppendPlainTextInline(paragraph, segment);
-                        }
-                        break;
-                    case MessageInlineSegmentType.Emoji:
-                        if (!AppendEmojiInline(paragraph, segment.Text))
-                        {
-                            AppendPlainTextInline(paragraph, new MessageInlineSegment(MessageInlineSegmentType.Text, $":{segment.Text}:"));
-                        }
-                        break;
-                }
-            }
-
-            if (paragraph.Inlines.Count == 0)
-            {
-                paragraph.Inlines.Add(new Run { Text = string.Empty });
-            }
-
-            richTextBlock.Blocks.Add(paragraph);
-        }
-
-        private void MessageItemView_MessageRichTextBlockLoadedRequested(MessageItemView sender, RichTextBlock richTextBlock)
-        {
-            MessageRichTextBlock_Loaded(richTextBlock, new RoutedEventArgs());
-        }
-
-        private void MessageAvatarBorder_Loaded(object sender, RoutedEventArgs e)
-        {
-            if (sender is not Border border || border.Tag is not MessageDisplayItem message)
-            {
-                return;
-            }
-
-            if (message.UserAvatarUri == null)
-            {
-                border.Visibility = Visibility.Collapsed;
-                return;
-            }
-
-            border.Visibility = Visibility.Visible;
-            border.Background = new ImageBrush
-            {
-                ImageSource = new BitmapImage(message.UserAvatarUri),
-                Stretch = Stretch.UniformToFill
-            };
-        }
-
-        private void MessageItemView_MessageAvatarBorderLoadedRequested(MessageItemView sender, Border border)
-        {
-            MessageAvatarBorder_Loaded(border, new RoutedEventArgs());
-        }
-
-        private void ReactionBorder_Loaded(object sender, RoutedEventArgs e)
-        {
-            if (sender is not Border border || border.Tag is not MessageReactionItem reaction)
-            {
-                return;
-            }
-
-            var content = new StackPanel
-            {
-                Orientation = Orientation.Horizontal,
-                Spacing = 4,
-                VerticalAlignment = VerticalAlignment.Center
-            };
-
-            var emojiUrl = ResolveEmojiUrl(reaction.Name);
-            if (!string.IsNullOrWhiteSpace(emojiUrl) && Uri.TryCreate(emojiUrl, UriKind.Absolute, out var emojiUri))
-            {
-                content.Children.Add(new Image
-                {
-                    Width = 16,
-                    Height = 16,
-                    Stretch = Stretch.Uniform,
-                    Source = new BitmapImage(emojiUri)
-                });
-            }
-            else
-            {
-                content.Children.Add(new TextBlock
-                {
-                    Text = $":{reaction.Name}:",
-                    FontSize = 12,
-                    VerticalAlignment = VerticalAlignment.Center
-                });
-            }
-
-            content.Children.Add(new TextBlock
-            {
-                Text = reaction.Count.ToString(),
-                FontSize = 12,
-                VerticalAlignment = VerticalAlignment.Center
-            });
-
-            border.Child = content;
-        }
-
-        private void MessageItemView_ReactionBorderLoadedRequested(MessageItemView sender, Border border)
-        {
-            ReactionBorder_Loaded(border, new RoutedEventArgs());
-        }
+        // Loaded 系イベントハンドラは MessageRenderContext に移行済み
+        // MessageItemView.BuildContent() 内で直接コンテンツを構築するため不要
 
         private async void ShowMessageImageButton_Click(object sender, RoutedEventArgs e)
         {
@@ -429,26 +296,6 @@ namespace SlackSitter
             }
         }
 
-        private void MessageItemView_ShowImageRequested(MessageItemView sender, Button button)
-        {
-            ShowMessageImageButton_Click(button, new RoutedEventArgs());
-        }
-
-        private void ChannelCardView_MessageRichTextBlockLoadedRequested(ChannelCardView sender, RichTextBlock richTextBlock)
-        {
-            MessageRichTextBlock_Loaded(richTextBlock, new RoutedEventArgs());
-        }
-
-        private void ChannelCardView_MessageAvatarBorderLoadedRequested(ChannelCardView sender, Border border)
-        {
-            MessageAvatarBorder_Loaded(border, new RoutedEventArgs());
-        }
-
-        private void ChannelCardView_ReactionBorderLoadedRequested(ChannelCardView sender, Border border)
-        {
-            ReactionBorder_Loaded(border, new RoutedEventArgs());
-        }
-
         private void ChannelCardView_ShowImageRequested(ChannelCardView sender, Button button)
         {
             ShowMessageImageButton_Click(button, new RoutedEventArgs());
@@ -518,102 +365,8 @@ namespace SlackSitter
                 || (int)statusCode == 308;
         }
 
-        private void AppendPlainTextInline(Paragraph paragraph, MessageInlineSegment segment)
-        {
-            var normalizedText = segment.Text.Replace("\r\n", "\n").Replace("\r", "\n");
-            var lines = normalizedText.Split('\n');
-
-            for (var i = 0; i < lines.Length; i++)
-            {
-                if (!string.IsNullOrEmpty(lines[i]))
-                {
-                    paragraph.Inlines.Add(CreateStyledInline(segment, lines[i]));
-                }
-
-                if (i < lines.Length - 1)
-                {
-                    paragraph.Inlines.Add(new LineBreak());
-                }
-            }
-        }
-
-        private static Inline CreateStyledInline(MessageInlineSegment segment, string? textOverride = null)
-        {
-            if (!segment.IsCode)
-            {
-                return CreateStyledRun(segment, textOverride);
-            }
-
-            var textBlock = new TextBlock
-            {
-                Text = textOverride ?? segment.Text,
-                FontFamily = new FontFamily("Consolas"),
-                Padding = new Thickness(4, 1, 4, 1)
-            };
-
-            var border = new Border
-            {
-                Background = new SolidColorBrush(Microsoft.UI.Colors.LightGray),
-                CornerRadius = new CornerRadius(3),
-                Child = textBlock
-            };
-
-            return new InlineUIContainer
-            {
-                Child = border
-            };
-        }
-
-        private static Run CreateStyledRun(MessageInlineSegment segment, string? textOverride = null)
-        {
-            var run = new Run
-            {
-                Text = textOverride ?? segment.Text
-            };
-
-            if (segment.IsBold)
-            {
-                run.FontWeight = FontWeights.Bold;
-            }
-
-            if (segment.IsItalic)
-            {
-                run.FontStyle = Windows.UI.Text.FontStyle.Italic;
-            }
-
-            if (segment.IsStrikethrough)
-            {
-                run.TextDecorations = Windows.UI.Text.TextDecorations.Strikethrough;
-            }
-
-            if (segment.IsCode)
-            {
-                run.FontFamily = new FontFamily("Consolas");
-            }
-
-            return run;
-        }
-
-        private bool AppendEmojiInline(Paragraph paragraph, string emojiName)
-        {
-            var emojiUrl = ResolveEmojiUrl(emojiName);
-            if (string.IsNullOrEmpty(emojiUrl) || !Uri.TryCreate(emojiUrl, UriKind.Absolute, out var uri))
-            {
-                return false;
-            }
-
-            var image = new Image
-            {
-                Width = 18,
-                Height = 18,
-                Stretch = Stretch.Uniform,
-                Margin = new Thickness(1, 0, 1, -2),
-                Source = new BitmapImage(uri)
-            };
-
-            paragraph.Inlines.Add(new InlineUIContainer { Child = image });
-            return true;
-        }
+        // AppendPlainTextInline, CreateStyledInline, CreateStyledRun, AppendEmojiInline は
+        // MessageRenderContext に移動済み
 
         private string? ResolveEmojiUrl(string emojiName)
         {
@@ -651,6 +404,20 @@ namespace SlackSitter
             if (_customEmojiMap.Count > 0)
             {
                 AddLog($"カスタム絵文字を {_customEmojiMap.Count} 件取得");
+
+                // 全絵文字のエイリアスチェーンを事前解決し、MessageRenderContext に設定
+                var resolvedUrls = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                foreach (var kvp in _customEmojiMap)
+                {
+                    var resolved = ResolveEmojiUrl(kvp.Key);
+                    if (!string.IsNullOrEmpty(resolved))
+                    {
+                        resolvedUrls[kvp.Key] = resolved;
+                    }
+                }
+
+                Services.MessageRenderContext.Current.ResolvedEmojiUrls = resolvedUrls;
+                AddLog($"絵文字URLを {resolvedUrls.Count} 件事前解決");
             }
             else if (!string.IsNullOrWhiteSpace(result.Error))
             {

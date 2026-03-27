@@ -5,6 +5,7 @@ using Microsoft.UI.Xaml.Media;
 using Windows.Foundation;
 using SlackSitter.Converters;
 using SlackSitter.Models;
+using SlackSitter.Services;
 
 namespace SlackSitter.Views
 {
@@ -26,9 +27,9 @@ namespace SlackSitter.Views
             set => SetValue(MessageProperty, value);
         }
 
-        public event TypedEventHandler<MessageItemView, RichTextBlock>? MessageRichTextBlockLoadedRequested;
-        public event TypedEventHandler<MessageItemView, Border>? MessageAvatarBorderLoadedRequested;
-        public event TypedEventHandler<MessageItemView, Border>? ReactionBorderLoadedRequested;
+        /// <summary>
+        /// 画像表示ボタンのクリックイベント（ユーザー操作起点のため維持）
+        /// </summary>
         public event TypedEventHandler<MessageItemView, Button>? ShowImageRequested;
 
         public MessageItemView()
@@ -52,6 +53,8 @@ namespace SlackSitter.Views
                 return;
             }
 
+            var renderContext = MessageRenderContext.Current;
+
             var rootGrid = new Grid
             {
                 Margin = new Thickness(0, 8, 0, 4)
@@ -64,6 +67,7 @@ namespace SlackSitter.Views
             rootGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(40) });
             rootGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
+            // タイムスタンプ
             var timestampButton = new HyperlinkButton
             {
                 NavigateUri = Message.PermalinkUri,
@@ -81,6 +85,7 @@ namespace SlackSitter.Views
             };
             rootGrid.Children.Add(timestampButton);
 
+            // アバター — Loaded ハンドラではなく直接構築
             var avatarBorder = new Border
             {
                 Width = 28,
@@ -89,14 +94,14 @@ namespace SlackSitter.Views
                 BorderThickness = new Thickness(1),
                 Background = new SolidColorBrush(Microsoft.UI.Colors.White),
                 Margin = new Thickness(0, 2, 4, 0),
-                VerticalAlignment = VerticalAlignment.Top,
-                Tag = Message
+                VerticalAlignment = VerticalAlignment.Top
             };
-            avatarBorder.Loaded += MessageAvatarBorder_Loaded;
+            renderContext.PopulateAvatar(avatarBorder, Message);
             Grid.SetRow(avatarBorder, 1);
             Grid.SetColumn(avatarBorder, 0);
             rootGrid.Children.Add(avatarBorder);
 
+            // メッセージカード
             var messageCard = new Border
             {
                 Background = GetBrush("CardBackgroundFillColorDefaultBrush"),
@@ -115,15 +120,17 @@ namespace SlackSitter.Views
                 Spacing = 8
             };
 
+            // RichTextBlock — Loaded ハンドラではなく直接構築
             var richTextBlock = new RichTextBlock
             {
-                Tag = Message,
                 TextWrapping = TextWrapping.Wrap,
                 FontSize = 18
             };
-            richTextBlock.Loaded += MessageRichTextBlock_Loaded;
+            var paragraph = renderContext.BuildMessageParagraph(Message);
+            richTextBlock.Blocks.Add(paragraph);
             messageStack.Children.Add(richTextBlock);
 
+            // 画像ボタン（クリックによる遅延読込は維持）
             if (Message.Images.Count > 0)
             {
                 var imagesStack = new StackPanel
@@ -165,6 +172,7 @@ namespace SlackSitter.Views
             messageCard.Child = messageStack;
             rootGrid.Children.Add(messageCard);
 
+            // リアクション — Loaded ハンドラではなく直接構築
             if (Message.Reactions.Count > 0)
             {
                 var reactionContainer = new StackPanel
@@ -180,20 +188,20 @@ namespace SlackSitter.Views
                 {
                     var reactionBorder = new Border
                     {
-                        Tag = reaction,
                         Background = new SolidColorBrush(Microsoft.UI.Colors.White),
                         BorderBrush = GetBrush("CardStrokeColorDefaultBrush"),
                         BorderThickness = new Thickness(1),
                         CornerRadius = new CornerRadius(10),
                         Padding = new Thickness(6, 3, 6, 3)
                     };
-                    reactionBorder.Loaded += ReactionBorder_Loaded;
+                    renderContext.PopulateReaction(reactionBorder, reaction);
                     reactionContainer.Children.Add(reactionBorder);
                 }
 
                 rootGrid.Children.Add(reactionContainer);
             }
 
+            // スレッド返信（再帰的に MessageItemView を生成）
             if (Message.Replies.Count > 0)
             {
                 var repliesStack = new StackPanel
@@ -212,9 +220,6 @@ namespace SlackSitter.Views
                         Message = reply,
                         Margin = new Thickness(28, 0, 0, 0)
                     };
-                    replyItemView.MessageRichTextBlockLoadedRequested += (_, richTextBlock) => MessageRichTextBlockLoadedRequested?.Invoke(this, richTextBlock);
-                    replyItemView.MessageAvatarBorderLoadedRequested += (_, border) => MessageAvatarBorderLoadedRequested?.Invoke(this, border);
-                    replyItemView.ReactionBorderLoadedRequested += (_, border) => ReactionBorderLoadedRequested?.Invoke(this, border);
                     replyItemView.ShowImageRequested += (_, button) => ShowImageRequested?.Invoke(this, button);
                     repliesStack.Children.Add(replyItemView);
                 }
@@ -223,30 +228,6 @@ namespace SlackSitter.Views
             }
 
             Content = rootGrid;
-        }
-
-        private void MessageRichTextBlock_Loaded(object sender, RoutedEventArgs e)
-        {
-            if (sender is RichTextBlock richTextBlock)
-            {
-                MessageRichTextBlockLoadedRequested?.Invoke(this, richTextBlock);
-            }
-        }
-
-        private void MessageAvatarBorder_Loaded(object sender, RoutedEventArgs e)
-        {
-            if (sender is Border border)
-            {
-                MessageAvatarBorderLoadedRequested?.Invoke(this, border);
-            }
-        }
-
-        private void ReactionBorder_Loaded(object sender, RoutedEventArgs e)
-        {
-            if (sender is Border border)
-            {
-                ReactionBorderLoadedRequested?.Invoke(this, border);
-            }
         }
 
         private void ShowMessageImageButton_Click(object sender, RoutedEventArgs e)
