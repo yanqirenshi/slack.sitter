@@ -36,8 +36,9 @@ API 呼び出しは `SlackSitter/Services/SlackService.cs` に集約されてい
 | SlackNet メソッド | `_client.Conversations.History()` |
 | 呼び出し箇所 | `SlackService.cs` — `GetChannelMessagesAsync()` |
 | 用途 | 指定チャンネルのメッセージ履歴を取得 |
-| 主なパラメータ | `channelId`: チャンネルID、`limit`: 10（デフォルト） |
-| 備考 | 取得後、タイムスタンプ降順でソート |
+| 主なパラメータ | `channelId`: チャンネルID、`limit`: 10（デフォルト）、`oldestTs`: 差分取得用タイムスタンプ（オプション） |
+| リトライ | `ExecuteWithRetryAsync()` で最大3回リトライ（指数バックオフ + 429 レート制限対応） |
+| 備考 | 取得後、タイムスタンプ降順でソート。差分更新時は `oldestTs` を指定して前回以降の新着のみ取得 |
 
 ### 4. conversations.replies
 
@@ -47,6 +48,7 @@ API 呼び出しは `SlackSitter/Services/SlackService.cs` に集約されてい
 | 呼び出し箇所 | `SlackService.cs` — `GetThreadRepliesAsync()` |
 | 用途 | スレッドの返信メッセージを取得 |
 | 主なパラメータ | `channelId`: チャンネルID、`threadTs`: スレッドの親メッセージのタイムスタンプ、`limit`: 20（デフォルト） |
+| リトライ | `ExecuteWithRetryAsync()` で最大3回リトライ（指数バックオフ + 429 レート制限対応） |
 | 備考 | 親メッセージは結果から除外（`Ts != threadTs`）、タイムスタンプ昇順でソート |
 
 ### 5. users.info
@@ -58,6 +60,7 @@ API 呼び出しは `SlackSitter/Services/SlackService.cs` に集約されてい
 | 用途 | ユーザーのプロフィール情報（名前・アバター画像 URL）を取得 |
 | 戻り値の利用 | `userInfo.Name`、`userInfo.Profile.Image192` / `Image72` / `Image48` / `Image32` |
 | キャッシュ | `_userImageUrlCache`（Dictionary）でユーザーごとの画像 URL をキャッシュ |
+| リトライ | `GetUserImageUrlAsync()` は `ExecuteWithRetryAsync()` で最大3回リトライ |
 
 ### 6. emoji.list
 
@@ -68,6 +71,20 @@ API 呼び出しは `SlackSitter/Services/SlackService.cs` に集約されてい
 | 用途 | ワークスペースのカスタム絵文字一覧を取得 |
 | 認証 | Bearer トークンを Authorization ヘッダーに設定 |
 | レスポンス解析 | `System.Text.Json` で手動パース（`ok`、`emoji` プロパティを参照） |
+| リトライ | `ExecuteWithRetryAsync()` で最大3回リトライ。HTTP 429 検出時は `Retry-After` ヘッダ秒数を待機 |
+
+## リトライ・レート制限対応
+
+全 API に共通のリトライ機構 `ExecuteWithRetryAsync<T>()` が導入されている。
+
+| 項目 | 内容 |
+|------|------|
+| 最大リトライ回数 | 3回 |
+| バックオフ方式 | 指数バックオフ（1秒 → 2秒 → 4秒） |
+| 429 対応 | `Retry-After` ヘッダ秒数 or デフォルト30秒を待機 |
+| リトライ対象 | HTTP 429、SlackNet `ratelimited` 例外、`TaskCanceledException`、`HttpRequestException` |
+| 適用 API | conversations.history、conversations.replies、users.info（画像取得）、emoji.list |
+| 非適用 API | auth.test（認証）、conversations.list（初回のみ） |
 
 ## 必要な OAuth Scopes
 
