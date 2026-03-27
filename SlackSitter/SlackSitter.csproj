@@ -18,6 +18,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Page Remove="Views\ChannelBoardView.xaml" />
+    <Page Remove="Views\ChannelCardView.xaml" />
     <Page Remove="Views\MainControllerView.xaml" />
     <Page Remove="Views\PopupBubbleView.xaml" />
     <Page Remove="Views\StatusPanelView.xaml" />
@@ -59,6 +60,10 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
+    <Page Include="Views\ChannelCardView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
     <Page Include="Views\StatusPanelView.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -74,6 +79,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Update="Views\ChannelBoardView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </None>
+    <None Update="Views\ChannelCardView.xaml">
       <Generator>MSBuild:Compile</Generator>
     </None>
     <None Update="Views\StatusPanelView.xaml">

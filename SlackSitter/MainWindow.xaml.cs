@@ -50,7 +50,7 @@ namespace SlackSitter
         }
 
         private static readonly TimeSpan AutoRefreshInterval = TimeSpan.FromMinutes(5);
-        private const int MaxConcurrentMessageLoads = 4;
+        private const int MaxConcurrentMessageLoads = 10;
         private readonly SlackService _slackService;
         private readonly SettingsService _settingsService;
         private readonly CustomBoardStorageService _customBoardStorageService;
@@ -449,7 +449,10 @@ namespace SlackSitter
             }
         }
 
-        private async Task<List<ChannelWithMessages>> LoadChannelBatchAsync(IReadOnlyList<SlackNet.Conversation> channels, string? workspaceUrl)
+        private async Task<List<ChannelWithMessages>> LoadChannelBatchAsync(
+            IReadOnlyList<SlackNet.Conversation> channels,
+            string? workspaceUrl,
+            Dictionary<string, string?>? oldestByChannelId = null)
         {
             using var semaphore = new SemaphoreSlim(MaxConcurrentMessageLoads);
 
@@ -458,7 +461,11 @@ namespace SlackSitter
                 await semaphore.WaitAsync().ConfigureAwait(false);
                 try
                 {
-                    var messages = await _slackService.GetChannelMessagesAsync(channel.Id, 10).ConfigureAwait(false);
+                    // 差分更新: oldest が指定されていれば差分取得
+                    string? oldest = null;
+                    oldestByChannelId?.TryGetValue(channel.Id, out oldest);
+
+                    var messages = await _slackService.GetChannelMessagesAsync(channel.Id, 10, oldest: oldest).ConfigureAwait(false);
 
                     // スレッド返信を並列取得（逐次 foreach + await → Task.WhenAll）
                     var threadMessages = messages
@@ -703,9 +710,15 @@ namespace SlackSitter
 
                 await LoadCustomEmojiAsync();
 
+                // 差分更新: 既存チャンネルの最終取得タイムスタンプを収集
+                var oldestByChannelId = activeChannels
+                    .Where(c => !string.IsNullOrWhiteSpace(c.LastFetchedTs))
+                    .ToDictionary(c => c.Channel.Id, c => c.LastFetchedTs);
+
                 var refreshedChannels = await LoadChannelBatchAsync(
                     activeChannels.Select(channel => channel.Channel).ToList(),
-                    _slackService.GetWorkspaceUrl());
+                    _slackService.GetWorkspaceUrl(),
+                    oldestByChannelId);
 
                 if (_currentChannelDisplayFilter == ChannelDisplayFilter.CustomOnly)
                 {

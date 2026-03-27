@@ -2,6 +2,7 @@ using SlackNet;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text.Json;
@@ -16,6 +17,9 @@ namespace SlackSitter.Services
         private string? _workspaceUrl;
         private readonly HttpClient _httpClient = new();
         private readonly Dictionary<string, string?> _userImageUrlCache = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+
+        private const int MaxRetryCount = 3;
+        private const int DefaultRateLimitWaitSeconds = 30;
 
         public bool IsAuthenticated => _client != null && !string.IsNullOrEmpty(_accessToken);
 
@@ -195,8 +199,12 @@ namespace SlackSitter.Services
 
             try
             {
-                var userInfo = await _client.Users.Info(userId);
-                var userImageUrl = userInfo.Profile?.Image72 ?? userInfo.Profile?.Image48 ?? userInfo.Profile?.Image32;
+                var userImageUrl = await ExecuteWithRetryAsync(async () =>
+                {
+                    var userInfo = await _client.Users.Info(userId);
+                    return userInfo.Profile?.Image72 ?? userInfo.Profile?.Image48 ?? userInfo.Profile?.Image32;
+                });
+
                 _userImageUrlCache[userId] = userImageUrl;
                 return userImageUrl;
             }
@@ -208,7 +216,7 @@ namespace SlackSitter.Services
             }
         }
 
-        public async Task<List<SlackNet.Events.MessageEvent>> GetChannelMessagesAsync(string channelId, int limit = 10)
+        public async Task<List<SlackNet.Events.MessageEvent>> GetChannelMessagesAsync(string channelId, int limit = 10, string? oldest = null)
         {
             if (_client == null)
             {
@@ -217,14 +225,17 @@ namespace SlackSitter.Services
 
             try
             {
-                var response = await _client.Conversations.History(channelId, limit: limit);
-
-                if (response.Messages != null)
+                return await ExecuteWithRetryAsync(async () =>
                 {
-                    return response.Messages.OrderByDescending(m => m.Ts).ToList();
-                }
+                    var response = await _client.Conversations.History(channelId, oldestTs: oldest, limit: limit);
 
-                return new List<SlackNet.Events.MessageEvent>();
+                    if (response.Messages != null)
+                    {
+                        return response.Messages.OrderByDescending(m => m.Ts).ToList();
+                    }
+
+                    return new List<SlackNet.Events.MessageEvent>();
+                });
             }
             catch (Exception ex)
             {
@@ -242,17 +253,20 @@ namespace SlackSitter.Services
 
             try
             {
-                var response = await _client.Conversations.Replies(channelId, threadTs, limit: limit);
-
-                if (response.Messages != null)
+                return await ExecuteWithRetryAsync(async () =>
                 {
-                    return response.Messages
-                        .Where(message => !string.Equals(message.Ts, threadTs, StringComparison.Ordinal))
-                        .OrderBy(message => message.Ts)
-                        .ToList();
-                }
+                    var response = await _client.Conversations.Replies(channelId, threadTs, limit: limit);
 
-                return new List<SlackNet.Events.MessageEvent>();
+                    if (response.Messages != null)
+                    {
+                        return response.Messages
+                            .Where(message => !string.Equals(message.Ts, threadTs, StringComparison.Ordinal))
+                            .OrderBy(message => message.Ts)
+                            .ToList();
+                    }
+
+                    return new List<SlackNet.Events.MessageEvent>();
+                });
             }
             catch (Exception ex)
             {
@@ -270,44 +284,135 @@ namespace SlackSitter.Services
 
             try
             {
-                using var request = new HttpRequestMessage(HttpMethod.Get, "https://slack.com/api/emoji.list");
-                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _accessToken);
-
-                using var response = await _httpClient.SendAsync(request);
-                response.EnsureSuccessStatusCode();
-
-                await using var stream = await response.Content.ReadAsStreamAsync();
-                using var document = await JsonDocument.ParseAsync(stream);
-
-                if (!document.RootElement.TryGetProperty("ok", out var okElement) || !okElement.GetBoolean())
+                return await ExecuteWithRetryAsync(async () =>
                 {
-                    var error = document.RootElement.TryGetProperty("error", out var errorElement)
-                        ? errorElement.GetString()
-                        : "unknown_error";
-                    return (new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase), error);
-                }
+                    using var request = new HttpRequestMessage(HttpMethod.Get, "https://slack.com/api/emoji.list");
+                    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _accessToken);
 
-                if (!document.RootElement.TryGetProperty("emoji", out var emojiElement))
-                {
-                    return (new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase), "emoji_not_found");
-                }
+                    using var response = await _httpClient.SendAsync(request);
 
-                var emojiMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-
-                foreach (var property in emojiElement.EnumerateObject())
-                {
-                    if (property.Value.ValueKind == JsonValueKind.String)
+                    // HTTP 429 レート制限の場合は例外としてリトライに任せる
+                    if (response.StatusCode == HttpStatusCode.TooManyRequests)
                     {
-                        emojiMap[property.Name] = property.Value.GetString() ?? string.Empty;
+                        var retryAfter = response.Headers.RetryAfter?.Delta?.TotalSeconds ?? DefaultRateLimitWaitSeconds;
+                        throw new HttpRequestException($"Rate limited (429). Retry after {retryAfter}s.");
                     }
-                }
 
-                return (emojiMap, null);
+                    response.EnsureSuccessStatusCode();
+
+                    await using var stream = await response.Content.ReadAsStreamAsync();
+                    using var document = await JsonDocument.ParseAsync(stream);
+
+                    if (!document.RootElement.TryGetProperty("ok", out var okElement) || !okElement.GetBoolean())
+                    {
+                        var error = document.RootElement.TryGetProperty("error", out var errorElement)
+                            ? errorElement.GetString()
+                            : "unknown_error";
+                        return (new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase), (string?)error);
+                    }
+
+                    if (!document.RootElement.TryGetProperty("emoji", out var emojiElement))
+                    {
+                        return (new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase), (string?)"emoji_not_found");
+                    }
+
+                    var emojiMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+                    foreach (var property in emojiElement.EnumerateObject())
+                    {
+                        if (property.Value.ValueKind == JsonValueKind.String)
+                        {
+                            emojiMap[property.Name] = property.Value.GetString() ?? string.Empty;
+                        }
+                    }
+
+                    return (emojiMap, (string?)null);
+                });
             }
             catch (Exception ex)
             {
                 return (new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase), ex.Message);
             }
+        }
+
+        /// <summary>
+        /// 指数バックオフ付きリトライヘルパー。
+        /// HTTP 429（レート制限）を検出した場合は Retry-After 秒数を待機する。
+        /// </summary>
+        private static async Task<T> ExecuteWithRetryAsync<T>(Func<Task<T>> operation)
+        {
+            for (var attempt = 0; attempt <= MaxRetryCount; attempt++)
+            {
+                try
+                {
+                    return await operation().ConfigureAwait(false);
+                }
+                catch (Exception ex) when (attempt < MaxRetryCount && IsRetryableException(ex))
+                {
+                    var waitSeconds = GetWaitSeconds(ex, attempt);
+                    System.Diagnostics.Debug.WriteLine(
+                        $"API call failed (attempt {attempt + 1}/{MaxRetryCount + 1}), retrying in {waitSeconds}s: {ex.Message}");
+                    await Task.Delay(TimeSpan.FromSeconds(waitSeconds)).ConfigureAwait(false);
+                }
+            }
+
+            // ここには到達しないが、コンパイラ対策
+            return await operation().ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// リトライ可能な例外かどうかを判定する。
+        /// HTTP 429、タイムアウト、一時的なネットワークエラーが対象。
+        /// </summary>
+        private static bool IsRetryableException(Exception ex)
+        {
+            // HTTP 429 レート制限
+            if (ex is HttpRequestException httpEx && httpEx.Message.Contains("429"))
+            {
+                return true;
+            }
+
+            // SlackNet の例外（レート制限を含む）
+            if (ex is SlackNet.SlackException slackEx &&
+                slackEx.Message.Contains("ratelimited", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            // タイムアウトやネットワークエラー
+            if (ex is TaskCanceledException || ex is HttpRequestException)
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// リトライまでの待機秒数を計算する。
+        /// 429 の場合は Retry-After ベース、それ以外は指数バックオフ。
+        /// </summary>
+        private static double GetWaitSeconds(Exception ex, int attempt)
+        {
+            // 429 レート制限の場合、エラーメッセージから Retry-After を抽出
+            if (ex.Message.Contains("Retry after") && ex.Message.Contains("s."))
+            {
+                var afterIndex = ex.Message.IndexOf("Retry after ", StringComparison.OrdinalIgnoreCase);
+                if (afterIndex >= 0)
+                {
+                    var numStart = afterIndex + "Retry after ".Length;
+                    var numEnd = ex.Message.IndexOf('s', numStart);
+                    if (numEnd > numStart && double.TryParse(ex.Message[numStart..numEnd], out var retryAfter))
+                    {
+                        return retryAfter;
+                    }
+                }
+
+                return DefaultRateLimitWaitSeconds;
+            }
+
+            // 指数バックオフ: 1秒 → 2秒 → 4秒
+            return Math.Pow(2, attempt);
         }
     }
 }

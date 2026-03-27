@@ -18,11 +18,18 @@ namespace SlackSitter.Models
         public bool IsMember => Channel?.IsMember ?? false;
         public string? LastMessageTs => Messages?.FirstOrDefault()?.Ts;
 
+        /// <summary>
+        /// 最後にデータ取得した時点の最新メッセージタイムスタンプ。
+        /// 差分更新時に oldest パラメータとして使用する。
+        /// </summary>
+        public string? LastFetchedTs { get; set; }
+
         public ChannelWithMessages(Conversation channel, List<MessageDisplayItem> messages, string? workspaceUrl)
         {
             Channel = channel;
             Messages = messages ?? new List<MessageDisplayItem>();
             ChannelUri = CreateChannelUri(workspaceUrl, channel?.Id);
+            LastFetchedTs = Messages.FirstOrDefault()?.Ts;
         }
 
         private static Uri? CreateChannelUri(string? workspaceUrl, string? channelId)
