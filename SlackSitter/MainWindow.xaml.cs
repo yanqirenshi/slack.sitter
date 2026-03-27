@@ -440,16 +440,23 @@ namespace SlackSitter
                 try
                 {
                     var messages = await _slackService.GetChannelMessagesAsync(channel.Id, 10).ConfigureAwait(false);
-                    var threadRepliesByParentTs = new Dictionary<string, List<SlackNet.Events.MessageEvent>>(StringComparer.OrdinalIgnoreCase);
 
-                    foreach (var message in messages.Where(message => !string.IsNullOrWhiteSpace(message.Ts) && GetReplyCount(message) > 0))
+                    // スレッド返信を並列取得（逐次 foreach + await → Task.WhenAll）
+                    var threadMessages = messages
+                        .Where(message => !string.IsNullOrWhiteSpace(message.Ts) && GetReplyCount(message) > 0)
+                        .ToList();
+
+                    var threadTasks = threadMessages.Select(async message =>
                     {
                         var replies = await _slackService.GetThreadRepliesAsync(channel.Id, message.Ts!).ConfigureAwait(false);
-                        if (replies.Count > 0)
-                        {
-                            threadRepliesByParentTs[message.Ts!] = replies;
-                        }
-                    }
+                        return (Ts: message.Ts!, Replies: replies);
+                    }).ToList();
+
+                    var threadResults = await Task.WhenAll(threadTasks).ConfigureAwait(false);
+
+                    var threadRepliesByParentTs = threadResults
+                        .Where(result => result.Replies.Count > 0)
+                        .ToDictionary(result => result.Ts, result => result.Replies, StringComparer.OrdinalIgnoreCase);
 
                     var allMessages = messages
                         .Concat(threadRepliesByParentTs.Values.SelectMany(replyMessages => replyMessages))
@@ -463,13 +470,20 @@ namespace SlackSitter
 
                     await Task.WhenAll(userImageTasks.Values).ConfigureAwait(false);
 
+                    // Task.Result → await 済み Task から安全に結果取得
+                    var userImageResults = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+                    foreach (var kvp in userImageTasks)
+                    {
+                        userImageResults[kvp.Key] = await kvp.Value.ConfigureAwait(false);
+                    }
+
                     var displayMessages = messages
                         .Select(message => new MessageDisplayItem(
                             message,
                             channel.Id,
                             workspaceUrl,
-                            !string.IsNullOrWhiteSpace(message.User) && userImageTasks.TryGetValue(message.User, out var imageTask)
-                                ? imageTask.Result
+                            !string.IsNullOrWhiteSpace(message.User) && userImageResults.TryGetValue(message.User, out var imageUrl)
+                                ? imageUrl
                                 : null,
                             threadRepliesByParentTs.TryGetValue(message.Ts ?? string.Empty, out var replies)
                                 ? replies
@@ -477,8 +491,8 @@ namespace SlackSitter
                                         reply,
                                         channel.Id,
                                         workspaceUrl,
-                                        !string.IsNullOrWhiteSpace(reply.User) && userImageTasks.TryGetValue(reply.User, out var replyImageTask)
-                                            ? replyImageTask.Result
+                                        !string.IsNullOrWhiteSpace(reply.User) && userImageResults.TryGetValue(reply.User, out var replyImageUrl)
+                                            ? replyImageUrl
                                             : null))
                                     .ToList()
                                 : null))
@@ -539,8 +553,8 @@ namespace SlackSitter
                     AddLog(startLogMessage);
                 }
 
-                await LoadCustomEmojiAsync();
-                await LoadUserAvatarAsync();
+                // Emoji と UserAvatar は互いに独立しているため並列取得
+                await Task.WhenAll(LoadCustomEmojiAsync(), LoadUserAvatarAsync());
                 await LoadChannelsAsync();
 
                 if (!string.IsNullOrWhiteSpace(endLogMessage))

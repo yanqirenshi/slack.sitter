@@ -14,6 +14,7 @@ namespace SlackSitter.Services
         private ISlackApiClient? _client;
         private string? _accessToken;
         private string? _workspaceUrl;
+        private readonly HttpClient _httpClient = new();
         private readonly Dictionary<string, string?> _userImageUrlCache = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
 
         public bool IsAuthenticated => _client != null && !string.IsNullOrEmpty(_accessToken);
@@ -269,11 +270,10 @@ namespace SlackSitter.Services
 
             try
             {
-                using var httpClient = new HttpClient();
                 using var request = new HttpRequestMessage(HttpMethod.Get, "https://slack.com/api/emoji.list");
                 request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _accessToken);
 
-                using var response = await httpClient.SendAsync(request);
+                using var response = await _httpClient.SendAsync(request);
                 response.EnsureSuccessStatusCode();
 
                 await using var stream = await response.Content.ReadAsStreamAsync();
