@@ -1,5 +1,6 @@
 using SlackNet.Events;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.Collections.Generic;
 using System.Linq;
@@ -149,6 +150,9 @@ namespace SlackSitter.Models
             }
         }
 
+        // PropertyInfo をキャッシュして毎回の GetProperty() 呼び出しを回避
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<(Type, string), PropertyInfo?> PropertyCache = new();
+
         private static IEnumerable<object> GetEnumerablePropertyValue(object source, string propertyName)
         {
             var propertyValue = GetPropertyValue(source, propertyName);
@@ -166,7 +170,10 @@ namespace SlackSitter.Models
 
         private static object? GetPropertyValue(object source, string propertyName)
         {
-            return source.GetType().GetProperty(propertyName, BindingFlags.Public | BindingFlags.Instance)?.GetValue(source);
+            var key = (source.GetType(), propertyName);
+            var property = PropertyCache.GetOrAdd(key, k =>
+                k.Item1.GetProperty(k.Item2, BindingFlags.Public | BindingFlags.Instance));
+            return property?.GetValue(source);
         }
 
         private static string? GetStringPropertyValue(object source, string propertyName)
@@ -217,6 +224,18 @@ namespace SlackSitter.Models
 
         private static void AddTextAndEmojiSegments(List<MessageInlineSegment> segments, string text)
         {
+            // 絵文字の位置を一括検出（1パス目: O(n)）
+            var emojiMatches = SlackEmojiRegex.Matches(text);
+            var emojiPositions = new HashSet<int>(emojiMatches.Count);
+            var emojiByIndex = new Dictionary<int, Match>(emojiMatches.Count);
+
+            foreach (Match match in emojiMatches)
+            {
+                emojiPositions.Add(match.Index);
+                emojiByIndex[match.Index] = match;
+            }
+
+            // テキスト + 絵文字 + 装飾を処理（2パス目: O(n)）
             var buffer = new StringBuilder();
             var isBold = false;
             var isItalic = false;
@@ -225,16 +244,12 @@ namespace SlackSitter.Models
 
             for (var index = 0; index < text.Length; index++)
             {
-                if (!isCode)
+                if (!isCode && emojiByIndex.TryGetValue(index, out var emojiMatch))
                 {
-                    var emojiMatch = SlackEmojiRegex.Match(text, index);
-                    if (emojiMatch.Success && emojiMatch.Index == index)
-                    {
-                        FlushTextSegment(segments, buffer, isBold, isItalic, isStrikethrough, isCode);
-                        segments.Add(new MessageInlineSegment(MessageInlineSegmentType.Emoji, emojiMatch.Groups["name"].Value));
-                        index += emojiMatch.Length - 1;
-                        continue;
-                    }
+                    FlushTextSegment(segments, buffer, isBold, isItalic, isStrikethrough, isCode);
+                    segments.Add(new MessageInlineSegment(MessageInlineSegmentType.Emoji, emojiMatch.Groups["name"].Value));
+                    index += emojiMatch.Length - 1;
+                    continue;
                 }
 
                 var currentChar = text[index];

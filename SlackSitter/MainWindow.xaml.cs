@@ -60,10 +60,10 @@ namespace SlackSitter
         private readonly Dictionary<string, Conversation> _allUnarchivedChannelsByName = new(StringComparer.OrdinalIgnoreCase);
         private string? _currentUserId;
         private string? _currentUserName;
-        private readonly ObservableCollection<ChannelWithMessages> _allDisplayedChannels;
-        private readonly ObservableCollection<ChannelWithMessages> _joinedDisplayedChannels;
-        private readonly ObservableCollection<ChannelWithMessages> _notJoinedDisplayedChannels;
-        private readonly ObservableCollection<ChannelWithMessages> _customDisplayedChannels;
+        private readonly BatchObservableCollection<ChannelWithMessages> _allDisplayedChannels;
+        private readonly BatchObservableCollection<ChannelWithMessages> _joinedDisplayedChannels;
+        private readonly BatchObservableCollection<ChannelWithMessages> _notJoinedDisplayedChannels;
+        private readonly BatchObservableCollection<ChannelWithMessages> _customDisplayedChannels;
         private readonly List<CustomBoardRuntimeState> _customBoards = new();
         private ObservableCollection<string> _logMessages;
         private Dictionary<string, string> _customEmojiMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -88,10 +88,10 @@ namespace SlackSitter
                 Interval = AutoRefreshInterval
             };
             _autoRefreshTimer.Tick += AutoRefreshTimer_Tick;
-            _allDisplayedChannels = new ObservableCollection<ChannelWithMessages>();
-            _joinedDisplayedChannels = new ObservableCollection<ChannelWithMessages>();
-            _notJoinedDisplayedChannels = new ObservableCollection<ChannelWithMessages>();
-            _customDisplayedChannels = new ObservableCollection<ChannelWithMessages>();
+            _allDisplayedChannels = new BatchObservableCollection<ChannelWithMessages>();
+            _joinedDisplayedChannels = new BatchObservableCollection<ChannelWithMessages>();
+            _notJoinedDisplayedChannels = new BatchObservableCollection<ChannelWithMessages>();
+            _customDisplayedChannels = new BatchObservableCollection<ChannelWithMessages>();
             _logMessages = new ObservableCollection<string>();
             AllChannelBoard.SetItemsSource(_allDisplayedChannels);
             JoinedChannelBoard.SetItemsSource(_joinedDisplayedChannels);
@@ -144,23 +144,42 @@ namespace SlackSitter
                 : double.MinValue;
         }
 
+        // ReplyCount プロパティへのアクセスをキャッシュ済みデリゲートで高速化
+        private static readonly Func<SlackNet.Events.MessageEvent, int> GetReplyCountDelegate = CreateReplyCountGetter();
+
+        private static Func<SlackNet.Events.MessageEvent, int> CreateReplyCountGetter()
+        {
+            var property = typeof(SlackNet.Events.MessageEvent).GetProperty("ReplyCount",
+                System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+
+            if (property == null)
+            {
+                return _ => 0;
+            }
+
+            var getter = property.GetGetMethod();
+            if (getter == null)
+            {
+                return _ => 0;
+            }
+
+            return message =>
+            {
+                try
+                {
+                    var value = getter.Invoke(message, null);
+                    return value != null ? Convert.ToInt32(value) : 0;
+                }
+                catch
+                {
+                    return 0;
+                }
+            };
+        }
+
         private static int GetReplyCount(SlackNet.Events.MessageEvent message)
         {
-            var propertyValue = message.GetType().GetProperty("ReplyCount")?.GetValue(message);
-
-            if (propertyValue == null)
-            {
-                return 0;
-            }
-
-            try
-            {
-                return Convert.ToInt32(propertyValue);
-            }
-            catch
-            {
-                return 0;
-            }
+            return GetReplyCountDelegate(message);
         }
 
         private static int CompareChannels(ChannelWithMessages left, ChannelWithMessages right)
@@ -928,6 +947,11 @@ namespace SlackSitter
 
                     var batchResults = await LoadChannelBatchAsync(timesChannelBatch, workspaceUrl);
 
+                    // バッチ更新: 複数チャンネルの挿入を1回の CollectionChanged(Reset) にまとめる
+                    _allDisplayedChannels.BeginBatchUpdate();
+                    _joinedDisplayedChannels.BeginBatchUpdate();
+                    _notJoinedDisplayedChannels.BeginBatchUpdate();
+
                     foreach (var channelWithMessages in batchResults.OrderBy(channel => channel, Comparer<ChannelWithMessages>.Create(CompareChannels)))
                     {
                         InsertDisplayedChannel(_allDisplayedChannels, channelWithMessages);
@@ -943,6 +967,10 @@ namespace SlackSitter
 
                         AddLog($"チャンネル #{channelWithMessages.Name}: {channelWithMessages.Messages.Count} 件のメッセージを取得");
                     }
+
+                    _allDisplayedChannels.EndBatchUpdate();
+                    _joinedDisplayedChannels.EndBatchUpdate();
+                    _notJoinedDisplayedChannels.EndBatchUpdate();
                 }
 
                 AddLog($"取得したチャンネル数: {totalChannelsCount}");
