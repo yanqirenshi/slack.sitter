@@ -31,6 +31,7 @@ namespace SlackSitter.Views
         /// 画像表示イベント（ユーザー操作起点のため維持）
         /// </summary>
         public event TypedEventHandler<ChannelCardView, Button>? ShowImageRequested;
+        public event TypedEventHandler<ChannelCardView, ImageSource>? ImagePreviewRequested;
 
         public ChannelCardView()
         {
@@ -81,6 +82,7 @@ namespace SlackSitter.Views
                     Message = message
                 };
                 messageItemView.ShowImageRequested += MessageItemView_ShowImageRequested;
+                messageItemView.ImagePreviewRequested += MessageItemView_ImagePreviewRequested;
                 MessagesPanel.Children.Add(messageItemView);
             }
         }
@@ -88,6 +90,11 @@ namespace SlackSitter.Views
         private void MessageItemView_ShowImageRequested(MessageItemView sender, Button button)
         {
             ShowImageRequested?.Invoke(this, button);
+        }
+
+        private void MessageItemView_ImagePreviewRequested(MessageItemView sender, ImageSource imageSource)
+        {
+            ImagePreviewRequested?.Invoke(this, imageSource);
         }
     }
 }

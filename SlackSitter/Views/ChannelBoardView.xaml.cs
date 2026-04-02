@@ -1,5 +1,6 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 using Windows.Foundation;
 
 namespace SlackSitter.Views
@@ -10,6 +11,7 @@ namespace SlackSitter.Views
         /// 画像表示イベント（ユーザー操作起点のため維持）
         /// </summary>
         public event TypedEventHandler<ChannelCardView, Button>? ShowImageRequested;
+        public event TypedEventHandler<ChannelCardView, ImageSource>? ImagePreviewRequested;
 
         public ChannelBoardView()
         {
@@ -35,6 +37,11 @@ namespace SlackSitter.Views
         private void ChannelCardView_ShowImageRequested(ChannelCardView sender, Button button)
         {
             ShowImageRequested?.Invoke(sender, button);
+        }
+
+        private void ChannelCardView_ImagePreviewRequested(ChannelCardView sender, ImageSource imageSource)
+        {
+            ImagePreviewRequested?.Invoke(sender, imageSource);
         }
     }
 }

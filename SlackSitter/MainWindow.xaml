@@ -31,21 +31,25 @@
             <views:ChannelBoardView
                 x:Name="AllChannelBoard"
                 Visibility="Collapsed"
+                ImagePreviewRequested="ChannelCardView_ImagePreviewRequested"
                 ShowImageRequested="ChannelCardView_ShowImageRequested" />
 
             <views:ChannelBoardView
                 x:Name="JoinedChannelBoard"
                 Visibility="Visible"
+                ImagePreviewRequested="ChannelCardView_ImagePreviewRequested"
                 ShowImageRequested="ChannelCardView_ShowImageRequested" />
 
             <views:ChannelBoardView
                 x:Name="NotJoinedChannelBoard"
                 Visibility="Collapsed"
+                ImagePreviewRequested="ChannelCardView_ImagePreviewRequested"
                 ShowImageRequested="ChannelCardView_ShowImageRequested" />
 
             <views:ChannelBoardView
                 x:Name="CustomChannelBoard"
                 Visibility="Collapsed"
+                ImagePreviewRequested="ChannelCardView_ImagePreviewRequested"
                 ShowImageRequested="ChannelCardView_ShowImageRequested" />
 
             <views:StatusPanelView x:Name="StatusPanel" />
@@ -64,6 +68,55 @@
                 UpdateTokenRequested="UserPopupView_UpdateTokenRequested"
                 LogoutRequested="UserPopupView_LogoutRequested"
                 AutoRefreshToggleRequested="UserPopupView_AutoRefreshToggleRequested" />
+        </Grid>
+
+        <Grid
+            x:Name="ImagePreviewOverlay"
+            Visibility="Collapsed"
+            Background="#B3000000"
+            IsTabStop="True"
+            KeyDown="ImagePreviewOverlay_KeyDown">
+            <Grid
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Stretch"
+                Padding="32">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <Button
+                    x:Name="ImagePreviewCloseButton"
+                    Grid.Row="0"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Top"
+                    Content="閉じる"
+                    Click="ImagePreviewCloseButton_Click"
+                    Padding="16,8"
+                    Margin="0,0,0,16" />
+
+                <ScrollViewer
+                    Grid.Row="1"
+                    HorizontalAlignment="Stretch"
+                    VerticalAlignment="Stretch"
+                    HorizontalScrollBarVisibility="Auto"
+                    VerticalScrollBarVisibility="Auto"
+                    ZoomMode="Enabled"
+                    MinZoomFactor="1"
+                    MaxZoomFactor="5">
+                    <Border
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Background="Transparent"
+                        Padding="16">
+                        <Image
+                            x:Name="ImagePreviewImage"
+                            Stretch="Uniform"
+                            MaxWidth="1600"
+                            MaxHeight="1000" />
+                    </Border>
+                </ScrollViewer>
+            </Grid>
         </Grid>
 
         <Grid

@@ -32,6 +32,7 @@ namespace SlackSitter.Views
         /// 画像表示ボタンのクリックイベント（ユーザー操作起点のため維持）
         /// </summary>
         public event TypedEventHandler<MessageItemView, Button>? ShowImageRequested;
+        public event TypedEventHandler<MessageItemView, ImageSource>? ImagePreviewRequested;
 
         public MessageItemView()
         {
@@ -141,15 +142,25 @@ namespace SlackSitter.Views
 
                 foreach (var imageItem in Message.Images)
                 {
+                    var imageButton = new Button
+                    {
+                        Padding = new Thickness(0),
+                        Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent),
+                        BorderThickness = new Thickness(0),
+                        HorizontalAlignment = HorizontalAlignment.Left,
+                        Visibility = Visibility.Collapsed
+                    };
+
                     var image = new Image
                     {
-                        Visibility = Visibility.Collapsed,
                         MaxHeight = 240,
                         Stretch = Stretch.Uniform
                     };
-                    StartInlineImageLoad(image, imageItem);
+                    imageButton.Content = image;
+                    imageButton.Click += InlineImageButton_Click;
+                    StartInlineImageLoad(imageButton, image, imageItem);
 
-                    imagesStack.Children.Add(image);
+                    imagesStack.Children.Add(imageButton);
                 }
 
                 messageStack.Children.Add(imagesStack);
@@ -207,6 +218,7 @@ namespace SlackSitter.Views
                         Margin = new Thickness(28, 0, 0, 0)
                     };
                     replyItemView.ShowImageRequested += (_, button) => ShowImageRequested?.Invoke(this, button);
+                    replyItemView.ImagePreviewRequested += (_, imageSource) => ImagePreviewRequested?.Invoke(this, imageSource);
                     repliesStack.Children.Add(replyItemView);
                 }
 
@@ -216,7 +228,7 @@ namespace SlackSitter.Views
             Content = rootGrid;
         }
 
-        private async void StartInlineImageLoad(Image image, MessageImageItem imageItem)
+        private async void StartInlineImageLoad(Button imageButton, Image image, MessageImageItem imageItem)
         {
             if (image.Source != null)
             {
@@ -242,11 +254,20 @@ namespace SlackSitter.Views
             if (bitmapImage != null)
             {
                 image.Source = bitmapImage;
-                image.Visibility = Visibility.Visible;
+                imageButton.Tag = bitmapImage;
+                imageButton.Visibility = Visibility.Visible;
             }
             else
             {
-                image.Visibility = Visibility.Collapsed;
+                imageButton.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        private void InlineImageButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button button && button.Tag is ImageSource imageSource)
+            {
+                ImagePreviewRequested?.Invoke(this, imageSource);
             }
         }
 

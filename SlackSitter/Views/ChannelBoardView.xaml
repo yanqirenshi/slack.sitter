@@ -11,6 +11,7 @@
         <DataTemplate x:Key="ChannelCardTemplate">
             <views:ChannelCardView
                 Channel="{Binding}"
+                ImagePreviewRequested="ChannelCardView_ImagePreviewRequested"
                 ShowImageRequested="ChannelCardView_ShowImageRequested" />
         </DataTemplate>
     </UserControl.Resources>

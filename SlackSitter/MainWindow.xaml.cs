@@ -349,6 +349,38 @@ namespace SlackSitter
             ShowMessageImageButton_Click(button, new RoutedEventArgs());
         }
 
+        private void ChannelCardView_ImagePreviewRequested(ChannelCardView sender, ImageSource imageSource)
+        {
+            ShowImagePreview(imageSource);
+        }
+
+        private void ImagePreviewCloseButton_Click(object sender, RoutedEventArgs e)
+        {
+            HideImagePreview();
+        }
+
+        private void ImagePreviewOverlay_KeyDown(object sender, KeyRoutedEventArgs e)
+        {
+            if (e.Key == Windows.System.VirtualKey.Escape)
+            {
+                HideImagePreview();
+                e.Handled = true;
+            }
+        }
+
+        private void ShowImagePreview(ImageSource imageSource)
+        {
+            ImagePreviewImage.Source = imageSource;
+            ImagePreviewOverlay.Visibility = Visibility.Visible;
+            ImagePreviewCloseButton.Focus(FocusState.Programmatic);
+        }
+
+        private void HideImagePreview()
+        {
+            ImagePreviewImage.Source = null;
+            ImagePreviewOverlay.Visibility = Visibility.Collapsed;
+        }
+
         private sealed class DownloadedImageResult
         {
             public byte[] Bytes { get; init; } = Array.Empty<byte>();
