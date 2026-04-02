@@ -60,8 +60,7 @@ namespace SlackSitter.Views
                 _measuredWidths[i] = element.DesiredSize.Width;
             }
 
-            // 全体の幅を計算（推定値ベース）
-            var totalWidth = itemCount * itemExtent - Spacing;
+            var totalWidth = CalculateTotalWidth(itemCount);
 
             return new Size(totalWidth, availableHeight);
         }
@@ -78,17 +77,53 @@ namespace SlackSitter.Views
             var itemExtent = EstimatedItemWidth + Spacing;
             var firstVisibleIndex = Math.Max(0, (int)(realizationRect.X / itemExtent) - 1);
             var lastVisibleIndex = Math.Min(itemCount - 1, (int)((realizationRect.X + realizationRect.Width) / itemExtent) + 1);
+            var x = GetOffsetForIndex(firstVisibleIndex);
 
             for (var i = firstVisibleIndex; i <= lastVisibleIndex; i++)
             {
                 var element = context.GetOrCreateElementAt(i);
-                var x = i * itemExtent;
-                var width = _measuredWidths.TryGetValue(i, out var w) ? w : EstimatedItemWidth;
+                var width = GetItemWidth(i);
 
                 element.Arrange(new Rect(x, 0, width, finalSize.Height));
+                x += width + Spacing;
             }
 
             return finalSize;
+        }
+
+        private double CalculateTotalWidth(int itemCount)
+        {
+            if (itemCount <= 0)
+            {
+                return 0;
+            }
+
+            var totalWidth = 0d;
+
+            for (var i = 0; i < itemCount; i++)
+            {
+                totalWidth += GetItemWidth(i);
+            }
+
+            totalWidth += (itemCount - 1) * Spacing;
+            return totalWidth;
+        }
+
+        private double GetOffsetForIndex(int index)
+        {
+            var offset = 0d;
+
+            for (var i = 0; i < index; i++)
+            {
+                offset += GetItemWidth(i) + Spacing;
+            }
+
+            return offset;
+        }
+
+        private double GetItemWidth(int index)
+        {
+            return _measuredWidths.TryGetValue(index, out var width) ? width : EstimatedItemWidth;
         }
     }
 }
