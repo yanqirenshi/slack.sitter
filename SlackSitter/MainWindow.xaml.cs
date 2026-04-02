@@ -51,11 +51,13 @@ namespace SlackSitter
 
         private static readonly TimeSpan AutoRefreshInterval = TimeSpan.FromMinutes(5);
         private const int MaxConcurrentMessageLoads = 10;
+        private const int MaxConcurrentInlineImageLoads = 2;
         private readonly SlackService _slackService;
         private readonly SettingsService _settingsService;
         private readonly CustomBoardStorageService _customBoardStorageService;
         private readonly HttpClient _httpClient;
         private readonly DispatcherTimer _autoRefreshTimer;
+        private readonly SemaphoreSlim _inlineImageLoadSemaphore = new(MaxConcurrentInlineImageLoads);
         private readonly HashSet<string> _allUnarchivedChannelNames = new(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, Conversation> _allUnarchivedChannelsByName = new(StringComparer.OrdinalIgnoreCase);
         private string? _currentUserId;
@@ -93,6 +95,7 @@ namespace SlackSitter
             _notJoinedDisplayedChannels = new BatchObservableCollection<ChannelWithMessages>();
             _customDisplayedChannels = new BatchObservableCollection<ChannelWithMessages>();
             _logMessages = new ObservableCollection<string>();
+            Services.MessageRenderContext.Current.LoadMessageImageAsync = LoadInlineMessageBitmapAsync;
             AllChannelBoard.SetItemsSource(_allDisplayedChannels);
             JoinedChannelBoard.SetItemsSource(_joinedDisplayedChannels);
             NotJoinedChannelBoard.SetItemsSource(_notJoinedDisplayedChannels);
@@ -265,8 +268,37 @@ namespace SlackSitter
                 button.IsEnabled = false;
                 button.Content = "読み込み中...";
 
-                AddLog($"画像読み込み開始: 候補URL数={imageItem.CandidateUrls.Count}");
+                var bitmapImage = await LoadInlineMessageBitmapAsync(imageItem, logFailures: true);
+                if (bitmapImage == null)
+                {
+                    throw new InvalidOperationException("画像の取得候補が見つかりませんでした");
+                }
 
+                image.Source = bitmapImage;
+                image.Visibility = Visibility.Visible;
+                button.Visibility = Visibility.Collapsed;
+            }
+            catch (Exception ex)
+            {
+                var errorMessage = string.IsNullOrWhiteSpace(ex.Message) ? ex.GetType().Name : ex.Message;
+                AddLog($"画像の読み込みに失敗しました: {errorMessage}");
+                image.Visibility = Visibility.Collapsed;
+                button.IsEnabled = true;
+                button.Content = "画像";
+            }
+        }
+
+        private Task<BitmapImage?> LoadInlineMessageBitmapAsync(MessageImageItem imageItem)
+        {
+            return LoadInlineMessageBitmapAsync(imageItem, logFailures: false);
+        }
+
+        private async Task<BitmapImage?> LoadInlineMessageBitmapAsync(MessageImageItem imageItem, bool logFailures)
+        {
+            await _inlineImageLoadSemaphore.WaitAsync();
+
+            try
+            {
                 DownloadedImageResult? imageResult = null;
                 string? lastError = null;
 
@@ -274,9 +306,7 @@ namespace SlackSitter
                 {
                     try
                     {
-                        AddLog($"画像候補URLを試行: {candidateUrl}");
                         var candidateResult = await DownloadSlackImageAsync(candidateUrl);
-                        AddLog($"画像候補URLの応答: FinalUri={candidateResult.FinalUri}, ContentType={candidateResult.ContentType ?? "(unknown)"}");
                         if (!string.IsNullOrWhiteSpace(candidateResult.ContentType) && candidateResult.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
                         {
                             imageResult = candidateResult;
@@ -293,7 +323,12 @@ namespace SlackSitter
 
                 if (imageResult == null)
                 {
-                    throw new InvalidOperationException(lastError ?? "画像の取得候補が見つかりませんでした");
+                    if (logFailures && !string.IsNullOrWhiteSpace(lastError))
+                    {
+                        AddLog($"画像の読み込みに失敗しました: {lastError}");
+                    }
+
+                    return null;
                 }
 
                 var bitmapImage = new BitmapImage();
@@ -301,17 +336,11 @@ namespace SlackSitter
                 await randomAccessStream.WriteAsync(imageResult.Bytes.AsBuffer());
                 randomAccessStream.Seek(0);
                 await bitmapImage.SetSourceAsync(randomAccessStream);
-                image.Source = bitmapImage;
-                image.Visibility = Visibility.Visible;
-                button.Visibility = Visibility.Collapsed;
+                return bitmapImage;
             }
-            catch (Exception ex)
+            finally
             {
-                var errorMessage = string.IsNullOrWhiteSpace(ex.Message) ? ex.GetType().Name : ex.Message;
-                AddLog($"画像の読み込みに失敗しました: {errorMessage}");
-                image.Visibility = Visibility.Collapsed;
-                button.IsEnabled = true;
-                button.Content = "画像";
+                _inlineImageLoadSemaphore.Release();
             }
         }
 

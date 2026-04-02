@@ -7,6 +7,7 @@ using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Text;
 using SlackSitter.Models;
+using System.Threading.Tasks;
 
 namespace SlackSitter.Services
 {
@@ -23,6 +24,8 @@ namespace SlackSitter.Services
         /// 画像キャッシュ（アバター・絵文字の BitmapImage を URL 単位でキャッシュ）
         /// </summary>
         public BitmapImageCache ImageCache { get; } = new();
+
+        public Func<MessageImageItem, Task<BitmapImage?>>? LoadMessageImageAsync { get; set; }
 
         /// <summary>
         /// 事前解決済みの絵文字URL（エイリアスチェーン解決済み）

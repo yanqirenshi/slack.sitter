@@ -2,6 +2,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.Foundation;
 using SlackSitter.Converters;
 using SlackSitter.Models;
@@ -130,7 +131,7 @@ namespace SlackSitter.Views
             richTextBlock.Blocks.Add(paragraph);
             messageStack.Children.Add(richTextBlock);
 
-            // 画像ボタン（クリックによる遅延読込は維持）
+            // 画像は直接表示し、実体化時に非同期ロードする
             if (Message.Images.Count > 0)
             {
                 var imagesStack = new StackPanel
@@ -140,30 +141,15 @@ namespace SlackSitter.Views
 
                 foreach (var imageItem in Message.Images)
                 {
-                    var imageItemStack = new StackPanel
-                    {
-                        Spacing = 8
-                    };
-
-                    var showImageButton = new Button
-                    {
-                        Content = "画像",
-                        Tag = imageItem,
-                        HorizontalAlignment = HorizontalAlignment.Left
-                    };
-                    showImageButton.Click += ShowMessageImageButton_Click;
-
                     var image = new Image
                     {
-                        Tag = imageItem,
                         Visibility = Visibility.Collapsed,
                         MaxHeight = 240,
                         Stretch = Stretch.Uniform
                     };
+                    StartInlineImageLoad(image, imageItem);
 
-                    imageItemStack.Children.Add(showImageButton);
-                    imageItemStack.Children.Add(image);
-                    imagesStack.Children.Add(imageItemStack);
+                    imagesStack.Children.Add(image);
                 }
 
                 messageStack.Children.Add(imagesStack);
@@ -228,6 +214,40 @@ namespace SlackSitter.Views
             }
 
             Content = rootGrid;
+        }
+
+        private async void StartInlineImageLoad(Image image, MessageImageItem imageItem)
+        {
+            if (image.Source != null)
+            {
+                return;
+            }
+
+            var loader = MessageRenderContext.Current.LoadMessageImageAsync;
+            if (loader == null)
+            {
+                return;
+            }
+
+            BitmapImage? bitmapImage = null;
+
+            try
+            {
+                bitmapImage = await loader(imageItem);
+            }
+            catch
+            {
+            }
+
+            if (bitmapImage != null)
+            {
+                image.Source = bitmapImage;
+                image.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                image.Visibility = Visibility.Collapsed;
+            }
         }
 
         private void ShowMessageImageButton_Click(object sender, RoutedEventArgs e)
