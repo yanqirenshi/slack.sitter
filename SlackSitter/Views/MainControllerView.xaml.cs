@@ -13,8 +13,6 @@ namespace SlackSitter.Views
 {
     public sealed partial class MainControllerView : UserControl
     {
-        private const double CustomChannelButtonsBaseOffset = 708d;
-        private const double CustomChannelButtonSpacing = 118d;
         private readonly Brush _defaultAccentBrush;
         private readonly Brush _defaultPrimaryTextBrush;
         private readonly List<string> _allAvailableChannels = new();
@@ -275,9 +273,6 @@ namespace SlackSitter.Views
                 {
                     Diameter = 48,
                     IsCircular = false,
-                    HorizontalAlignment = HorizontalAlignment.Center,
-                    VerticalAlignment = VerticalAlignment.Bottom,
-                    Margin = new Thickness(CustomChannelButtonsBaseOffset + (CustomChannelButtonSpacing * i), 0, 0, 20),
                     InnerBorderBrush = _defaultAccentBrush,
                     ContentForeground = _defaultPrimaryTextBrush,
                     CenterText = GetCustomBoardButtonText(customBoardNames[i]),

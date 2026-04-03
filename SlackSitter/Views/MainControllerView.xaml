@@ -268,88 +268,75 @@
             VerticalAlignment="Top"
             Visibility="Collapsed" />
 
-        <views:CircleActionButtonView
-            x:Name="LogIconButton"
+        <StackPanel
+            x:Name="ActionButtonsPanel"
             HorizontalAlignment="Center"
             VerticalAlignment="Bottom"
-            Margin="-236,0,0,20"
-            InnerBorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
-            CenterGlyph="&#xEA37;"
-            Click="LogIconButton_Click"
-            Visibility="Collapsed" />
+            Orientation="Horizontal"
+            Spacing="14"
+            Margin="0,0,0,20">
+            <views:CircleActionButtonView
+                x:Name="LogIconButton"
+                InnerBorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
+                CenterGlyph="&#xEA37;"
+                Click="LogIconButton_Click"
+                Visibility="Collapsed" />
 
-        <views:CircleActionButtonView
-            x:Name="LoadingIndicatorButton"
-            HorizontalAlignment="Center"
-            VerticalAlignment="Bottom"
-            Margin="354,0,0,20"
-            CenterGlyph="&#xE895;"
-            ContentForeground="Gray"
-            IsCircular="False"
-            Click="LoadingIndicatorButton_Click"
-            Visibility="Collapsed" />
+            <views:CircleActionButtonView
+                x:Name="UserAvatarButton"
+                InnerBorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
+                Click="UserAvatarButton_Click"
+                Visibility="Collapsed" />
 
-        <views:CircleActionButtonView
-            x:Name="UserAvatarButton"
-            HorizontalAlignment="Center"
-            VerticalAlignment="Bottom"
-            Margin="-118,0,0,20"
-            InnerBorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
-            Click="UserAvatarButton_Click"
-            Visibility="Collapsed" />
+            <views:CircleActionButtonView
+                x:Name="GearIconButton"
+                InnerBorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
+                CenterGlyph="&#xE713;"
+                Click="GearIconButton_Click"
+                Visibility="Collapsed" />
 
-        <views:CircleActionButtonView
-            x:Name="GearIconButton"
-            HorizontalAlignment="Center"
-            VerticalAlignment="Bottom"
-            Margin="0,0,0,20"
-            InnerBorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
-            CenterGlyph="&#xE713;"
-            Click="GearIconButton_Click"
-            Visibility="Collapsed" />
+            <views:CircleActionButtonView
+                x:Name="MessageIconButton"
+                InnerBorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
+                CenterGlyph="&#xE8BD;"
+                Click="MessageIconButton_Click"
+                Visibility="Collapsed" />
 
-        <views:CircleActionButtonView
-            x:Name="MessageIconButton"
-            HorizontalAlignment="Center"
-            VerticalAlignment="Bottom"
-            Margin="118,0,0,20"
-            InnerBorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
-            CenterGlyph="&#xE8BD;"
-            Click="MessageIconButton_Click"
-            Visibility="Collapsed" />
+            <views:CircleActionButtonView
+                x:Name="PlusIconButton"
+                InnerBorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
+                CenterGlyph="&#xE710;"
+                Click="PlusIconButton_Click"
+                Visibility="Collapsed" />
 
-        <views:CircleActionButtonView
-            x:Name="PlusIconButton"
-            HorizontalAlignment="Center"
-            VerticalAlignment="Bottom"
-            Margin="236,0,0,20"
-            InnerBorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
-            CenterGlyph="&#xE710;"
-            Click="PlusIconButton_Click"
-            Visibility="Collapsed" />
+            <views:CircleActionButtonView
+                x:Name="LoadingIndicatorButton"
+                CenterGlyph="&#xE895;"
+                ContentForeground="Gray"
+                IsCircular="False"
+                Click="LoadingIndicatorButton_Click"
+                Visibility="Collapsed" />
 
-        <views:CircleActionButtonView
-            x:Name="CircleIcon1Button"
-            HorizontalAlignment="Center"
-            VerticalAlignment="Bottom"
-            Margin="472,0,0,20"
-            IsCircular="False"
-            InnerBorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
-            CenterText="①"
-            Click="CircleIcon1Button_Click"
-            Visibility="Collapsed" />
+            <views:CircleActionButtonView
+                x:Name="CircleIcon1Button"
+                IsCircular="False"
+                InnerBorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
+                CenterText="①"
+                Click="CircleIcon1Button_Click"
+                Visibility="Collapsed" />
 
-        <views:CircleActionButtonView
-            x:Name="CircleIcon2Button"
-            HorizontalAlignment="Center"
-            VerticalAlignment="Bottom"
-            Margin="590,0,0,20"
-            IsCircular="False"
-            InnerBorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
-            CenterText="②"
-            Click="CircleIcon2Button_Click"
-            Visibility="Collapsed" />
+            <views:CircleActionButtonView
+                x:Name="CircleIcon2Button"
+                IsCircular="False"
+                InnerBorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
+                CenterText="②"
+                Click="CircleIcon2Button_Click"
+                Visibility="Collapsed" />
 
-        <Grid x:Name="CustomChannelButtonsHost" />
+            <StackPanel
+                x:Name="CustomChannelButtonsHost"
+                Orientation="Horizontal"
+                Spacing="14" />
+        </StackPanel>
     </Grid>
 </UserControl>
