@@ -11,7 +11,7 @@ namespace SlackSitter.Views
     public sealed partial class ChannelCardView : UserControl
     {
         private static readonly BooleanToHeaderBrushConverter HeaderBrushConverter = new BooleanToHeaderBrushConverter();
-        private const double DefaultCardWidth = 300d;
+        private const double DefaultCardWidth = 320d;
         private const double ThreadedCardWidth = 356d;
 
         public static readonly DependencyProperty ChannelProperty =
