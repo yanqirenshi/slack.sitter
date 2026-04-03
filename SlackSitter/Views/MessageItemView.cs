@@ -142,11 +142,9 @@ namespace SlackSitter.Views
 
                 foreach (var imageItem in Message.Images)
                 {
-                    var imageButton = new Button
+                    var imageHost = new Border
                     {
-                        Padding = new Thickness(0),
                         Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent),
-                        BorderThickness = new Thickness(0),
                         HorizontalAlignment = HorizontalAlignment.Left,
                         Visibility = Visibility.Collapsed
                     };
@@ -156,11 +154,11 @@ namespace SlackSitter.Views
                         MaxHeight = 240,
                         Stretch = Stretch.Uniform
                     };
-                    imageButton.Content = image;
-                    imageButton.Click += InlineImageButton_Click;
-                    StartInlineImageLoad(imageButton, image, imageItem);
+                    imageHost.Child = image;
+                    imageHost.Tapped += InlineImageHost_Tapped;
+                    StartInlineImageLoad(imageHost, image, imageItem);
 
-                    imagesStack.Children.Add(imageButton);
+                    imagesStack.Children.Add(imageHost);
                 }
 
                 messageStack.Children.Add(imagesStack);
@@ -228,7 +226,7 @@ namespace SlackSitter.Views
             Content = rootGrid;
         }
 
-        private async void StartInlineImageLoad(Button imageButton, Image image, MessageImageItem imageItem)
+        private async void StartInlineImageLoad(Border imageHost, Image image, MessageImageItem imageItem)
         {
             if (image.Source != null)
             {
@@ -254,18 +252,18 @@ namespace SlackSitter.Views
             if (bitmapImage != null)
             {
                 image.Source = bitmapImage;
-                imageButton.Tag = bitmapImage;
-                imageButton.Visibility = Visibility.Visible;
+                imageHost.Tag = bitmapImage;
+                imageHost.Visibility = Visibility.Visible;
             }
             else
             {
-                imageButton.Visibility = Visibility.Collapsed;
+                imageHost.Visibility = Visibility.Collapsed;
             }
         }
 
-        private void InlineImageButton_Click(object sender, RoutedEventArgs e)
+        private void InlineImageHost_Tapped(object sender, Microsoft.UI.Xaml.Input.TappedRoutedEventArgs e)
         {
-            if (sender is Button button && button.Tag is ImageSource imageSource)
+            if (sender is Border imageHost && imageHost.Tag is ImageSource imageSource)
             {
                 ImagePreviewRequested?.Invoke(this, imageSource);
             }

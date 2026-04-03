@@ -57,6 +57,8 @@
             <views:MainControllerView
                 x:Name="MainController"
                 GearIconClick="MainController_GearIconClick"
+                MessageIconClick="MainController_MessageIconClick"
+                MessageCommentRequested="MainController_MessageCommentRequested"
                 PlusIconClick="MainController_PlusIconClick"
                 CircleIcon1Click="MainController_CircleIcon1Click"
                 CircleIcon2Click="MainController_CircleIcon2Click"

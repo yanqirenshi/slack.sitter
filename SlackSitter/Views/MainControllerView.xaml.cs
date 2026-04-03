@@ -13,7 +13,7 @@ namespace SlackSitter.Views
 {
     public sealed partial class MainControllerView : UserControl
     {
-        private const double CustomChannelButtonsBaseOffset = 590d;
+        private const double CustomChannelButtonsBaseOffset = 708d;
         private const double CustomChannelButtonSpacing = 118d;
         private readonly Brush _defaultAccentBrush;
         private readonly Brush _defaultPrimaryTextBrush;
@@ -23,6 +23,8 @@ namespace SlackSitter.Views
         private bool _areUserActionButtonsVisible;
 
         public event RoutedEventHandler? GearIconClick;
+        public event RoutedEventHandler? MessageIconClick;
+        public event RoutedEventHandler? MessageCommentRequested;
         public event RoutedEventHandler? PlusIconClick;
         public event RoutedEventHandler? CircleIcon1Click;
         public event RoutedEventHandler? CircleIcon2Click;
@@ -39,6 +41,8 @@ namespace SlackSitter.Views
         public ObservableCollection<string> SelectedChannels { get; } = new();
         public string PendingCustomBoardName => PlusChannelNameTextBox.Text?.Trim() ?? string.Empty;
         public string PendingGearBoardName => GearChannelNameTextBox.Text?.Trim() ?? string.Empty;
+        public string PendingMessageChannelName => MessageTitleTextBox.Text?.Trim() ?? string.Empty;
+        public string PendingMessageBody => MessageBodyTextBox.Text ?? string.Empty;
         private string _gearOriginalBoardName = string.Empty;
         private List<string> _gearOriginalSelectedChannels = new();
 
@@ -86,6 +90,18 @@ namespace SlackSitter.Views
             SelectedChannelsListView.SelectedItem = null;
             SelectedChannels.Clear();
             RefreshAvailableChannels();
+            UpdateActionButtonState();
+        }
+
+        public void ResetMessagePopupInputs()
+        {
+            MessageTitleTextBox.Text = "times-nihama";
+            MessageBodyTextBox.Text = string.Empty;
+        }
+
+        public void HideMessagePopup()
+        {
+            MessagePopupBorder.Visibility = Visibility.Collapsed;
             UpdateActionButtonState();
         }
 
@@ -191,6 +207,7 @@ namespace SlackSitter.Views
         public void HideAllPopups()
         {
             GearPopupBorder.Visibility = Visibility.Collapsed;
+            MessagePopupBorder.Visibility = Visibility.Collapsed;
             PlusPopupBorder.Visibility = Visibility.Collapsed;
             UserPopupBorder.Visibility = Visibility.Collapsed;
             ActivityLogPopupBorder.Visibility = Visibility.Collapsed;
@@ -200,6 +217,7 @@ namespace SlackSitter.Views
         {
             _areUserActionButtonsVisible = true;
             GearIconButton.Visibility = Visibility.Visible;
+            MessageIconButton.Visibility = Visibility.Visible;
             UserAvatarButton.Visibility = Visibility.Visible;
             PlusIconButton.Visibility = Visibility.Visible;
             CircleIcon1Button.Visibility = Visibility.Visible;
@@ -211,6 +229,7 @@ namespace SlackSitter.Views
         {
             _areUserActionButtonsVisible = false;
             GearIconButton.Visibility = Visibility.Collapsed;
+            MessageIconButton.Visibility = Visibility.Collapsed;
             UserAvatarButton.Visibility = Visibility.Collapsed;
             PlusIconButton.Visibility = Visibility.Collapsed;
             CircleIcon1Button.Visibility = Visibility.Collapsed;
@@ -300,7 +319,7 @@ namespace SlackSitter.Views
 
         private void LogIconButton_Click(object sender, RoutedEventArgs e)
         {
-            TogglePopup(ActivityLogPopupBorder, sender as CircleActionButtonView, UserPopupBorder, PlusPopupBorder, GearPopupBorder);
+            TogglePopup(ActivityLogPopupBorder, sender as CircleActionButtonView, UserPopupBorder, PlusPopupBorder, GearPopupBorder, MessagePopupBorder);
         }
 
         private void LoadingIndicatorButton_Click(object sender, RoutedEventArgs e)
@@ -311,13 +330,24 @@ namespace SlackSitter.Views
 
         private void UserAvatarButton_Click(object sender, RoutedEventArgs e)
         {
-            TogglePopup(UserPopupBorder, sender as CircleActionButtonView, ActivityLogPopupBorder, PlusPopupBorder, GearPopupBorder);
+            TogglePopup(UserPopupBorder, sender as CircleActionButtonView, ActivityLogPopupBorder, PlusPopupBorder, GearPopupBorder, MessagePopupBorder);
         }
 
         private void GearIconButton_Click(object sender, RoutedEventArgs e)
         {
-            TogglePopup(GearPopupBorder, sender as CircleActionButtonView, UserPopupBorder, ActivityLogPopupBorder, PlusPopupBorder);
+            TogglePopup(GearPopupBorder, sender as CircleActionButtonView, UserPopupBorder, ActivityLogPopupBorder, PlusPopupBorder, MessagePopupBorder);
             GearIconClick?.Invoke(sender, e);
+        }
+
+        private void MessageIconButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (MessagePopupBorder.Visibility != Visibility.Visible)
+            {
+                ResetMessagePopupInputs();
+            }
+
+            TogglePopup(MessagePopupBorder, sender as CircleActionButtonView, UserPopupBorder, ActivityLogPopupBorder, PlusPopupBorder, GearPopupBorder);
+            MessageIconClick?.Invoke(sender, e);
         }
 
         private void PlusIconButton_Click(object sender, RoutedEventArgs e)
@@ -327,7 +357,7 @@ namespace SlackSitter.Views
                 ResetPlusPopupInputs();
             }
 
-            TogglePopup(PlusPopupBorder, sender as CircleActionButtonView, UserPopupBorder, ActivityLogPopupBorder, GearPopupBorder);
+            TogglePopup(PlusPopupBorder, sender as CircleActionButtonView, UserPopupBorder, ActivityLogPopupBorder, GearPopupBorder, MessagePopupBorder);
             PlusIconClick?.Invoke(sender, e);
         }
 
@@ -386,6 +416,16 @@ namespace SlackSitter.Views
         {
             GearPopupBorder.Visibility = Visibility.Collapsed;
             UpdateActionButtonState();
+        }
+
+        private void MessageCancelButton_Click(object sender, RoutedEventArgs e)
+        {
+            HideMessagePopup();
+        }
+
+        private void MessageCommentButton_Click(object sender, RoutedEventArgs e)
+        {
+            MessageCommentRequested?.Invoke(this, e);
         }
 
         private void AddChannelsButton_Click(object sender, RoutedEventArgs e)

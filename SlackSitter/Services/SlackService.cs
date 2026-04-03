@@ -5,6 +5,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 
@@ -332,6 +333,68 @@ namespace SlackSitter.Services
             catch (Exception ex)
             {
                 return (new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase), ex.Message);
+            }
+        }
+
+        public async Task<(bool Success, string? Error)> PostMessageAsync(string channelId, string text)
+        {
+            if (string.IsNullOrWhiteSpace(_accessToken))
+            {
+                return (false, "アクセストークンが設定されていません");
+            }
+
+            if (string.IsNullOrWhiteSpace(channelId))
+            {
+                return (false, "投稿先チャンネルが指定されていません");
+            }
+
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                return (false, "投稿するコメントが空です");
+            }
+
+            try
+            {
+                return await ExecuteWithRetryAsync(async () =>
+                {
+                    using var request = new HttpRequestMessage(HttpMethod.Post, "https://slack.com/api/chat.postMessage");
+                    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _accessToken);
+                    request.Content = new StringContent(
+                        JsonSerializer.Serialize(new
+                        {
+                            channel = channelId,
+                            text
+                        }),
+                        Encoding.UTF8,
+                        "application/json");
+
+                    using var response = await _httpClient.SendAsync(request);
+
+                    if (response.StatusCode == HttpStatusCode.TooManyRequests)
+                    {
+                        var retryAfter = response.Headers.RetryAfter?.Delta?.TotalSeconds ?? DefaultRateLimitWaitSeconds;
+                        throw new HttpRequestException($"Rate limited (429). Retry after {retryAfter}s.");
+                    }
+
+                    response.EnsureSuccessStatusCode();
+
+                    await using var stream = await response.Content.ReadAsStreamAsync();
+                    using var document = await JsonDocument.ParseAsync(stream);
+
+                    if (!document.RootElement.TryGetProperty("ok", out var okElement) || !okElement.GetBoolean())
+                    {
+                        var error = document.RootElement.TryGetProperty("error", out var errorElement)
+                            ? errorElement.GetString()
+                            : "unknown_error";
+                        return (false, error);
+                    }
+
+                    return (true, (string?)null);
+                });
+            }
+            catch (Exception ex)
+            {
+                return (false, ex.Message);
             }
         }
 

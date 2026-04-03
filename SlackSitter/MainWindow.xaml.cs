@@ -1134,6 +1134,59 @@ namespace SlackSitter
                 customBoard.SelectedChannelNames);
         }
 
+        private void MainController_MessageIconClick(object sender, RoutedEventArgs e)
+        {
+        }
+
+        private async void MainController_MessageCommentRequested(object sender, RoutedEventArgs e)
+        {
+            if (!_slackService.IsAuthenticated)
+            {
+                AddLog("コメントを投稿できません: 未認証です");
+                return;
+            }
+
+            var channelName = MainController.PendingMessageChannelName;
+            if (string.IsNullOrWhiteSpace(channelName))
+            {
+                AddLog("コメント投稿先のチャンネル名を入力してください");
+                return;
+            }
+
+            var messageBody = MainController.PendingMessageBody?.Trim();
+            if (string.IsNullOrWhiteSpace(messageBody))
+            {
+                AddLog("投稿するコメントを入力してください");
+                return;
+            }
+
+            if (!_allUnarchivedChannelsByName.TryGetValue(channelName, out var channel) || string.IsNullOrWhiteSpace(channel.Id))
+            {
+                AddLog($"投稿先チャンネルが見つかりません: #{channelName}");
+                return;
+            }
+
+            MainController.ShowLoadingIndicatorBusy();
+
+            try
+            {
+                AddLog($"チャンネル #{channelName} にコメントを投稿中...");
+                var result = await _slackService.PostMessageAsync(channel.Id, messageBody);
+                if (!result.Success)
+                {
+                    AddLog($"コメント投稿に失敗しました: {result.Error ?? "unknown_error"}");
+                    return;
+                }
+
+                AddLog($"チャンネル #{channelName} にコメントを投稿しました");
+                MainController.HideMessagePopup();
+            }
+            finally
+            {
+                MainController.SetLoadingIndicatorIdle();
+            }
+        }
+
         private void MainController_PlusIconClick(object sender, RoutedEventArgs e)
         {
         }

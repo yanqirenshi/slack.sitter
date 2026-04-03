@@ -196,6 +196,66 @@
             </views:PopupBubbleView.PopupContent>
         </views:PopupBubbleView>
 
+        <views:PopupBubbleView
+            x:Name="MessagePopupBorder"
+            HorizontalAlignment="Left"
+            VerticalAlignment="Top"
+            Visibility="Collapsed"
+            BubbleBackground="{ThemeResource OpaquePopupBackgroundBrush}"
+            BubbleBorderBrush="{ThemeResource OpaquePopupBorderBrush}"
+            BubbleWidth="500"
+            BubbleHeight="400">
+            <views:PopupBubbleView.PopupContent>
+                <Grid RowSpacing="14">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <TextBox
+                        x:Name="MessageTitleTextBox"
+                        Grid.Row="0"
+                        Header="チャンネル名"
+                        PlaceholderText="times-nihama"
+                        Text="times-nihama" />
+
+                    <TextBox
+                        x:Name="MessageBodyTextBox"
+                        Grid.Row="1"
+                        AcceptsReturn="True"
+                        TextWrapping="Wrap"
+                        VerticalAlignment="Stretch"
+                        VerticalContentAlignment="Top"
+                        HorizontalAlignment="Stretch"
+                        MinHeight="220"
+                        PlaceholderText="コメントを入力" />
+
+                    <Grid Grid.Row="2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <Button
+                            Grid.Column="0"
+                            Content="Cancel"
+                            HorizontalAlignment="Left"
+                            Padding="16,8"
+                            Click="MessageCancelButton_Click" />
+
+                        <Button
+                            x:Name="MessageCommentButton"
+                            Grid.Column="1"
+                            Content="コメント"
+                            HorizontalAlignment="Right"
+                            Padding="16,8"
+                            Click="MessageCommentButton_Click" />
+                    </Grid>
+                </Grid>
+            </views:PopupBubbleView.PopupContent>
+        </views:PopupBubbleView>
+
         <views:UserPopupView
             x:Name="UserPopupBorder"
             HorizontalAlignment="Left"
@@ -222,7 +282,7 @@
             x:Name="LoadingIndicatorButton"
             HorizontalAlignment="Center"
             VerticalAlignment="Bottom"
-            Margin="236,0,0,20"
+            Margin="354,0,0,20"
             CenterGlyph="&#xE895;"
             ContentForeground="Gray"
             IsCircular="False"
@@ -249,10 +309,20 @@
             Visibility="Collapsed" />
 
         <views:CircleActionButtonView
-            x:Name="PlusIconButton"
+            x:Name="MessageIconButton"
             HorizontalAlignment="Center"
             VerticalAlignment="Bottom"
             Margin="118,0,0,20"
+            InnerBorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
+            CenterGlyph="&#xE8BD;"
+            Click="MessageIconButton_Click"
+            Visibility="Collapsed" />
+
+        <views:CircleActionButtonView
+            x:Name="PlusIconButton"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Bottom"
+            Margin="236,0,0,20"
             InnerBorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
             CenterGlyph="&#xE710;"
             Click="PlusIconButton_Click"
@@ -262,7 +332,7 @@
             x:Name="CircleIcon1Button"
             HorizontalAlignment="Center"
             VerticalAlignment="Bottom"
-            Margin="354,0,0,20"
+            Margin="472,0,0,20"
             IsCircular="False"
             InnerBorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
             CenterText="①"
@@ -273,7 +343,7 @@
             x:Name="CircleIcon2Button"
             HorizontalAlignment="Center"
             VerticalAlignment="Bottom"
-            Margin="472,0,0,20"
+            Margin="590,0,0,20"
             IsCircular="False"
             InnerBorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
             CenterText="②"
