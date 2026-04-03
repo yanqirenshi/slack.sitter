@@ -32,6 +32,7 @@ namespace SlackSitter.Views
         /// </summary>
         public event TypedEventHandler<ChannelCardView, Button>? ShowImageRequested;
         public event TypedEventHandler<ChannelCardView, ImageSource>? ImagePreviewRequested;
+        public event TypedEventHandler<ChannelCardView, MessageReactionClickInfo>? ReactionRequested;
 
         public ChannelCardView()
         {
@@ -83,6 +84,7 @@ namespace SlackSitter.Views
                 };
                 messageItemView.ShowImageRequested += MessageItemView_ShowImageRequested;
                 messageItemView.ImagePreviewRequested += MessageItemView_ImagePreviewRequested;
+                messageItemView.ReactionRequested += MessageItemView_ReactionRequested;
                 MessagesPanel.Children.Add(messageItemView);
             }
         }
@@ -95,6 +97,11 @@ namespace SlackSitter.Views
         private void MessageItemView_ImagePreviewRequested(MessageItemView sender, ImageSource imageSource)
         {
             ImagePreviewRequested?.Invoke(this, imageSource);
+        }
+
+        private void MessageItemView_ReactionRequested(MessageItemView sender, MessageReactionClickInfo reactionInfo)
+        {
+            ReactionRequested?.Invoke(this, reactionInfo);
         }
     }
 }

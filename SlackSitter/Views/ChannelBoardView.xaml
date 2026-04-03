@@ -12,6 +12,7 @@
             <views:ChannelCardView
                 Channel="{Binding}"
                 ImagePreviewRequested="ChannelCardView_ImagePreviewRequested"
+                ReactionRequested="ChannelCardView_ReactionRequested"
                 ShowImageRequested="ChannelCardView_ShowImageRequested" />
         </DataTemplate>
     </UserControl.Resources>

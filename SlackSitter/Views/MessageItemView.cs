@@ -33,6 +33,7 @@ namespace SlackSitter.Views
         /// </summary>
         public event TypedEventHandler<MessageItemView, Button>? ShowImageRequested;
         public event TypedEventHandler<MessageItemView, ImageSource>? ImagePreviewRequested;
+        public event TypedEventHandler<MessageItemView, MessageReactionClickInfo>? ReactionRequested;
 
         public MessageItemView()
         {
@@ -187,9 +188,11 @@ namespace SlackSitter.Views
                         BorderBrush = GetBrush("CardStrokeColorDefaultBrush"),
                         BorderThickness = new Thickness(1),
                         CornerRadius = new CornerRadius(10),
-                        Padding = new Thickness(6, 3, 6, 3)
+                        Padding = new Thickness(6, 3, 6, 3),
+                        Tag = reaction
                     };
                     renderContext.PopulateReaction(reactionBorder, reaction);
+                    reactionBorder.Tapped += ReactionBorder_Tapped;
                     reactionContainer.Children.Add(reactionBorder);
                 }
 
@@ -217,6 +220,7 @@ namespace SlackSitter.Views
                     };
                     replyItemView.ShowImageRequested += (_, button) => ShowImageRequested?.Invoke(this, button);
                     replyItemView.ImagePreviewRequested += (_, imageSource) => ImagePreviewRequested?.Invoke(this, imageSource);
+                    replyItemView.ReactionRequested += (_, reactionInfo) => ReactionRequested?.Invoke(this, reactionInfo);
                     repliesStack.Children.Add(replyItemView);
                 }
 
@@ -267,6 +271,16 @@ namespace SlackSitter.Views
             {
                 ImagePreviewRequested?.Invoke(this, imageSource);
             }
+        }
+
+        private void ReactionBorder_Tapped(object sender, Microsoft.UI.Xaml.Input.TappedRoutedEventArgs e)
+        {
+            if (Message == null || sender is not Border reactionBorder || reactionBorder.Tag is not MessageReactionItem reaction)
+            {
+                return;
+            }
+
+            ReactionRequested?.Invoke(this, new MessageReactionClickInfo(Message, reaction));
         }
 
         private void ShowMessageImageButton_Click(object sender, RoutedEventArgs e)

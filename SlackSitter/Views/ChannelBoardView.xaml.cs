@@ -1,6 +1,7 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
+using SlackSitter.Models;
 using Windows.Foundation;
 
 namespace SlackSitter.Views
@@ -12,6 +13,7 @@ namespace SlackSitter.Views
         /// </summary>
         public event TypedEventHandler<ChannelCardView, Button>? ShowImageRequested;
         public event TypedEventHandler<ChannelCardView, ImageSource>? ImagePreviewRequested;
+        public event TypedEventHandler<ChannelCardView, MessageReactionClickInfo>? ReactionRequested;
 
         public ChannelBoardView()
         {
@@ -42,6 +44,11 @@ namespace SlackSitter.Views
         private void ChannelCardView_ImagePreviewRequested(ChannelCardView sender, ImageSource imageSource)
         {
             ImagePreviewRequested?.Invoke(sender, imageSource);
+        }
+
+        private void ChannelCardView_ReactionRequested(ChannelCardView sender, MessageReactionClickInfo reactionInfo)
+        {
+            ReactionRequested?.Invoke(sender, reactionInfo);
         }
     }
 }

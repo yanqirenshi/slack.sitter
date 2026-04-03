@@ -354,6 +354,76 @@ namespace SlackSitter
             ShowImagePreview(imageSource);
         }
 
+        private async void ChannelCardView_ReactionRequested(ChannelCardView sender, MessageReactionClickInfo reactionInfo)
+        {
+            if (!_slackService.IsAuthenticated)
+            {
+                AddLog("リアクションを変更できません: 未認証です");
+                return;
+            }
+
+            if (_isRefreshingData)
+            {
+                AddLog("データ更新中のため、リアクション変更をスキップしました");
+                return;
+            }
+
+            if (sender.Channel?.Channel == null || string.IsNullOrWhiteSpace(sender.Channel.Channel.Id))
+            {
+                AddLog("リアクション対象のチャンネル情報が見つかりませんでした");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(reactionInfo?.Message?.Ts) || string.IsNullOrWhiteSpace(reactionInfo.Reaction.Name))
+            {
+                AddLog("リアクション対象のメッセージ情報が不正です");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(_currentUserId))
+            {
+                AddLog("リアクションを変更できません: 表示アカウント情報が未取得です");
+                return;
+            }
+
+            MainController.ShowLoadingIndicatorBusy();
+
+            try
+            {
+                var channel = sender.Channel.Channel;
+                var reactionState = await _slackService.HasUserReactionAsync(
+                    channel.Id,
+                    reactionInfo.Message.Ts,
+                    reactionInfo.Reaction.Name,
+                    _currentUserId);
+
+                if (!reactionState.Success)
+                {
+                    AddLog($"リアクション状態の取得に失敗しました: {reactionState.Error}");
+                    return;
+                }
+
+                var updateResult = reactionState.HasReacted
+                    ? await _slackService.RemoveReactionAsync(channel.Id, reactionInfo.Message.Ts, reactionInfo.Reaction.Name)
+                    : await _slackService.AddReactionAsync(channel.Id, reactionInfo.Message.Ts, reactionInfo.Reaction.Name);
+
+                if (!updateResult.Success)
+                {
+                    AddLog($"リアクションの変更に失敗しました: {updateResult.Error}");
+                    return;
+                }
+
+                await RefreshChannelAsync(channel);
+                AddLog(reactionState.HasReacted
+                    ? $"リアクションを削除しました :{reactionInfo.Reaction.Name}: #{channel.Name}"
+                    : $"リアクションを追加しました :{reactionInfo.Reaction.Name}: #{channel.Name}");
+            }
+            finally
+            {
+                MainController.SetLoadingIndicatorIdle();
+            }
+        }
+
         private void ImagePreviewCloseButton_Click(object sender, RoutedEventArgs e)
         {
             HideImagePreview();
@@ -804,6 +874,25 @@ namespace SlackSitter
             }
         }
 
+        private async Task RefreshChannelAsync(Conversation channel)
+        {
+            var refreshedChannels = await LoadChannelBatchAsync(new List<Conversation> { channel }, _slackService.GetWorkspaceUrl());
+            var refreshedChannel = refreshedChannels.FirstOrDefault();
+            if (refreshedChannel == null)
+            {
+                return;
+            }
+
+            UpsertChannelAcrossBoards(refreshedChannel);
+            UpdateChannelInCustomBoards(refreshedChannel);
+
+            if (_currentChannelDisplayFilter == ChannelDisplayFilter.CustomOnly)
+            {
+                ApplyActiveCustomBoard();
+                RefreshDisplayedChannelsFromFilter();
+            }
+        }
+
         private List<ChannelWithMessages> GetActiveBoardChannels()
         {
             return _currentChannelDisplayFilter switch
@@ -829,6 +918,23 @@ namespace SlackSitter
             {
                 _customDisplayedChannels.Add(channel);
                 AddLog($"チャンネル #{channel.Name}: {channel.Messages.Count} 件のメッセージを再取得");
+            }
+        }
+
+        private void UpdateChannelInCustomBoards(ChannelWithMessages refreshedChannel)
+        {
+            foreach (var customBoard in _customBoards)
+            {
+                if (!customBoard.SelectedChannelNames.Any(name => string.Equals(name, refreshedChannel.Name, StringComparison.OrdinalIgnoreCase)))
+                {
+                    continue;
+                }
+
+                customBoard.Channels = OrderCustomChannels(
+                    customBoard.SelectedChannelNames,
+                    customBoard.Channels
+                        .Where(channel => !string.Equals(channel.Channel.Id, refreshedChannel.Channel.Id, StringComparison.OrdinalIgnoreCase))
+                        .Append(refreshedChannel));
             }
         }
 

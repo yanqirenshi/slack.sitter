@@ -398,6 +398,170 @@ namespace SlackSitter.Services
             }
         }
 
+        public async Task<(bool Success, bool HasReacted, string? Error)> HasUserReactionAsync(string channelId, string timestamp, string reactionName, string userId)
+        {
+            if (string.IsNullOrWhiteSpace(_accessToken))
+            {
+                return (false, false, "アクセストークンが設定されていません");
+            }
+
+            if (string.IsNullOrWhiteSpace(channelId) || string.IsNullOrWhiteSpace(timestamp) || string.IsNullOrWhiteSpace(reactionName) || string.IsNullOrWhiteSpace(userId))
+            {
+                return (false, false, "リアクション状態の確認に必要な情報が不足しています");
+            }
+
+            try
+            {
+                return await ExecuteWithRetryAsync(async () =>
+                {
+                    using var request = new HttpRequestMessage(
+                        HttpMethod.Get,
+                        $"https://slack.com/api/conversations.history?channel={Uri.EscapeDataString(channelId)}&oldest={Uri.EscapeDataString(timestamp)}&latest={Uri.EscapeDataString(timestamp)}&inclusive=true&limit=1");
+                    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _accessToken);
+
+                    using var response = await _httpClient.SendAsync(request);
+
+                    if (response.StatusCode == HttpStatusCode.TooManyRequests)
+                    {
+                        var retryAfter = response.Headers.RetryAfter?.Delta?.TotalSeconds ?? DefaultRateLimitWaitSeconds;
+                        throw new HttpRequestException($"Rate limited (429). Retry after {retryAfter}s.");
+                    }
+
+                    response.EnsureSuccessStatusCode();
+
+                    await using var stream = await response.Content.ReadAsStreamAsync();
+                    using var document = await JsonDocument.ParseAsync(stream);
+
+                    if (!document.RootElement.TryGetProperty("ok", out var okElement) || !okElement.GetBoolean())
+                    {
+                        var error = document.RootElement.TryGetProperty("error", out var errorElement)
+                            ? errorElement.GetString()
+                            : "unknown_error";
+                        return (false, false, error);
+                    }
+
+                    if (!document.RootElement.TryGetProperty("messages", out var messagesElement)
+                        || messagesElement.ValueKind != JsonValueKind.Array)
+                    {
+                        return (true, false, (string?)null);
+                    }
+
+                    var messageElement = messagesElement
+                        .EnumerateArray()
+                        .FirstOrDefault(messageElement =>
+                            messageElement.TryGetProperty("ts", out var tsElement)
+                            && string.Equals(tsElement.GetString(), timestamp, StringComparison.Ordinal));
+
+                    if (messageElement.ValueKind != JsonValueKind.Object
+                        || !messageElement.TryGetProperty("reactions", out var reactionsElement)
+                        || reactionsElement.ValueKind != JsonValueKind.Array)
+                    {
+                        return (true, false, (string?)null);
+                    }
+
+                    foreach (var reactionElement in reactionsElement.EnumerateArray())
+                    {
+                        if (!reactionElement.TryGetProperty("name", out var nameElement)
+                            || !string.Equals(nameElement.GetString(), reactionName, StringComparison.OrdinalIgnoreCase))
+                        {
+                            continue;
+                        }
+
+                        if (!reactionElement.TryGetProperty("users", out var usersElement) || usersElement.ValueKind != JsonValueKind.Array)
+                        {
+                            return (true, false, (string?)null);
+                        }
+
+                        var hasReacted = usersElement
+                            .EnumerateArray()
+                            .Any(userElement => string.Equals(userElement.GetString(), userId, StringComparison.OrdinalIgnoreCase));
+
+                        return (true, hasReacted, (string?)null);
+                    }
+
+                    return (true, false, (string?)null);
+                });
+            }
+            catch (Exception ex)
+            {
+                return (false, false, ex.Message);
+            }
+        }
+
+        public Task<(bool Success, string? Error)> AddReactionAsync(string channelId, string timestamp, string reactionName)
+        {
+            return PostReactionAsync("reactions.add", channelId, timestamp, reactionName, "already_reacted");
+        }
+
+        public Task<(bool Success, string? Error)> RemoveReactionAsync(string channelId, string timestamp, string reactionName)
+        {
+            return PostReactionAsync("reactions.remove", channelId, timestamp, reactionName, "no_reaction");
+        }
+
+        private async Task<(bool Success, string? Error)> PostReactionAsync(string apiMethod, string channelId, string timestamp, string reactionName, string acceptedError)
+        {
+            if (string.IsNullOrWhiteSpace(_accessToken))
+            {
+                return (false, "アクセストークンが設定されていません");
+            }
+
+            if (string.IsNullOrWhiteSpace(channelId) || string.IsNullOrWhiteSpace(timestamp) || string.IsNullOrWhiteSpace(reactionName))
+            {
+                return (false, "リアクション更新に必要な情報が不足しています");
+            }
+
+            try
+            {
+                return await ExecuteWithRetryAsync(async () =>
+                {
+                    using var request = new HttpRequestMessage(HttpMethod.Post, $"https://slack.com/api/{apiMethod}");
+                    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _accessToken);
+                    request.Content = new StringContent(
+                        JsonSerializer.Serialize(new
+                        {
+                            channel = channelId,
+                            timestamp,
+                            name = reactionName
+                        }),
+                        Encoding.UTF8,
+                        "application/json");
+
+                    using var response = await _httpClient.SendAsync(request);
+
+                    if (response.StatusCode == HttpStatusCode.TooManyRequests)
+                    {
+                        var retryAfter = response.Headers.RetryAfter?.Delta?.TotalSeconds ?? DefaultRateLimitWaitSeconds;
+                        throw new HttpRequestException($"Rate limited (429). Retry after {retryAfter}s.");
+                    }
+
+                    response.EnsureSuccessStatusCode();
+
+                    await using var stream = await response.Content.ReadAsStreamAsync();
+                    using var document = await JsonDocument.ParseAsync(stream);
+
+                    if (!document.RootElement.TryGetProperty("ok", out var okElement) || !okElement.GetBoolean())
+                    {
+                        var error = document.RootElement.TryGetProperty("error", out var errorElement)
+                            ? errorElement.GetString()
+                            : "unknown_error";
+
+                        if (string.Equals(error, acceptedError, StringComparison.OrdinalIgnoreCase))
+                        {
+                            return (true, (string?)null);
+                        }
+
+                        return (false, error);
+                    }
+
+                    return (true, (string?)null);
+                });
+            }
+            catch (Exception ex)
+            {
+                return (false, ex.Message);
+            }
+        }
+
         /// <summary>
         /// 指数バックオフ付きリトライヘルパー。
         /// HTTP 429（レート制限）を検出した場合は Retry-After 秒数を待機する。

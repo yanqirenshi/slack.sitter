@@ -30,24 +30,28 @@
         <Grid x:Name="MainPanel" Visibility="Collapsed">
             <views:ChannelBoardView
                 x:Name="AllChannelBoard"
+                ReactionRequested="ChannelCardView_ReactionRequested"
                 Visibility="Collapsed"
                 ImagePreviewRequested="ChannelCardView_ImagePreviewRequested"
                 ShowImageRequested="ChannelCardView_ShowImageRequested" />
 
             <views:ChannelBoardView
                 x:Name="JoinedChannelBoard"
+                ReactionRequested="ChannelCardView_ReactionRequested"
                 Visibility="Visible"
                 ImagePreviewRequested="ChannelCardView_ImagePreviewRequested"
                 ShowImageRequested="ChannelCardView_ShowImageRequested" />
 
             <views:ChannelBoardView
                 x:Name="NotJoinedChannelBoard"
+                ReactionRequested="ChannelCardView_ReactionRequested"
                 Visibility="Collapsed"
                 ImagePreviewRequested="ChannelCardView_ImagePreviewRequested"
                 ShowImageRequested="ChannelCardView_ShowImageRequested" />
 
             <views:ChannelBoardView
                 x:Name="CustomChannelBoard"
+                ReactionRequested="ChannelCardView_ReactionRequested"
                 Visibility="Collapsed"
                 ImagePreviewRequested="ChannelCardView_ImagePreviewRequested"
                 ShowImageRequested="ChannelCardView_ShowImageRequested" />
