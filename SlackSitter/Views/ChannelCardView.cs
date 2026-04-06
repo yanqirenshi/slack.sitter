@@ -33,6 +33,7 @@ namespace SlackSitter.Views
         public event TypedEventHandler<ChannelCardView, Button>? ShowImageRequested;
         public event TypedEventHandler<ChannelCardView, ImageSource>? ImagePreviewRequested;
         public event TypedEventHandler<ChannelCardView, MessageReactionClickInfo>? ReactionRequested;
+        public event TypedEventHandler<ChannelCardView, MessageDisplayItem>? UserRequested;
 
         public ChannelCardView()
         {
@@ -70,7 +71,7 @@ namespace SlackSitter.Views
             OuterBorder.Width = cardWidth;
 
             // ヘッダーの更新
-            HeaderBorder.Background = HeaderBrushConverter.Convert(Channel.IsMember, typeof(Brush), null, string.Empty) as Brush;
+            HeaderBorder.Background = HeaderBrushConverter.Convert(Channel.IsMember, typeof(Brush), string.Empty, string.Empty) as Brush;
             HeaderLink.NavigateUri = Channel.ChannelUri;
             HeaderText.Text = Channel.Name;
 
@@ -85,6 +86,7 @@ namespace SlackSitter.Views
                 messageItemView.ShowImageRequested += MessageItemView_ShowImageRequested;
                 messageItemView.ImagePreviewRequested += MessageItemView_ImagePreviewRequested;
                 messageItemView.ReactionRequested += MessageItemView_ReactionRequested;
+                messageItemView.UserRequested += MessageItemView_UserRequested;
                 MessagesPanel.Children.Add(messageItemView);
             }
         }
@@ -102,6 +104,11 @@ namespace SlackSitter.Views
         private void MessageItemView_ReactionRequested(MessageItemView sender, MessageReactionClickInfo reactionInfo)
         {
             ReactionRequested?.Invoke(this, reactionInfo);
+        }
+
+        private void MessageItemView_UserRequested(MessageItemView sender, MessageDisplayItem message)
+        {
+            UserRequested?.Invoke(this, message);
         }
     }
 }

@@ -34,6 +34,7 @@ namespace SlackSitter.Views
         public event TypedEventHandler<MessageItemView, Button>? ShowImageRequested;
         public event TypedEventHandler<MessageItemView, ImageSource>? ImagePreviewRequested;
         public event TypedEventHandler<MessageItemView, MessageReactionClickInfo>? ReactionRequested;
+        public event TypedEventHandler<MessageItemView, MessageDisplayItem>? UserRequested;
 
         public MessageItemView()
         {
@@ -82,7 +83,7 @@ namespace SlackSitter.Views
             Grid.SetColumn(timestampButton, 1);
             timestampButton.Content = new TextBlock
             {
-                Text = TimestampConverter.Convert(Message.Ts, typeof(string), null, string.Empty) as string ?? Message.Ts ?? string.Empty,
+                Text = TimestampConverter.Convert(Message.Ts ?? string.Empty, typeof(string), string.Empty, string.Empty) as string ?? Message.Ts ?? string.Empty,
                 FontSize = 10,
                 Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray)
             };
@@ -100,6 +101,7 @@ namespace SlackSitter.Views
                 VerticalAlignment = VerticalAlignment.Top
             };
             renderContext.PopulateAvatar(avatarBorder, Message);
+            avatarBorder.Tapped += AvatarBorder_Tapped;
             Grid.SetRow(avatarBorder, 1);
             Grid.SetColumn(avatarBorder, 0);
             rootGrid.Children.Add(avatarBorder);
@@ -221,6 +223,7 @@ namespace SlackSitter.Views
                     replyItemView.ShowImageRequested += (_, button) => ShowImageRequested?.Invoke(this, button);
                     replyItemView.ImagePreviewRequested += (_, imageSource) => ImagePreviewRequested?.Invoke(this, imageSource);
                     replyItemView.ReactionRequested += (_, reactionInfo) => ReactionRequested?.Invoke(this, reactionInfo);
+                    replyItemView.UserRequested += (_, message) => UserRequested?.Invoke(this, message);
                     repliesStack.Children.Add(replyItemView);
                 }
 
@@ -270,6 +273,14 @@ namespace SlackSitter.Views
             if (sender is Border imageHost && imageHost.Tag is ImageSource imageSource)
             {
                 ImagePreviewRequested?.Invoke(this, imageSource);
+            }
+        }
+
+        private void AvatarBorder_Tapped(object sender, Microsoft.UI.Xaml.Input.TappedRoutedEventArgs e)
+        {
+            if (Message != null && !string.IsNullOrWhiteSpace(Message.User))
+            {
+                UserRequested?.Invoke(this, Message);
             }
         }
 

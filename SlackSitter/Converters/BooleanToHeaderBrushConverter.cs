@@ -13,7 +13,7 @@ namespace SlackSitter.Converters
                 if (isMember)
                 {
                     // ユーザーが参加している場合は青（アクセントカラー）
-                    return Microsoft.UI.Xaml.Application.Current.Resources["AccentFillColorDefaultBrush"] as Brush;
+                    return GetAccentBrush();
                 }
                 else
                 {
@@ -21,12 +21,20 @@ namespace SlackSitter.Converters
                     return new SolidColorBrush(Microsoft.UI.Colors.Gray);
                 }
             }
-            return Microsoft.UI.Xaml.Application.Current.Resources["AccentFillColorDefaultBrush"] as Brush;
+            return GetAccentBrush();
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, string language)
         {
             throw new NotImplementedException();
+        }
+
+        private static Brush GetAccentBrush()
+        {
+            return Microsoft.UI.Xaml.Application.Current.Resources.TryGetValue("AccentFillColorDefaultBrush", out var resource)
+                && resource is Brush brush
+                ? brush
+                : new SolidColorBrush(Microsoft.UI.Colors.Blue);
         }
     }
 }

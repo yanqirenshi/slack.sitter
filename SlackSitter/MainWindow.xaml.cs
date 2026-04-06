@@ -354,6 +354,40 @@ namespace SlackSitter
             ShowImagePreview(imageSource);
         }
 
+        private async void ChannelCardView_UserRequested(ChannelCardView sender, MessageDisplayItem message)
+        {
+            if (!_slackService.IsAuthenticated)
+            {
+                AddLog("ユーザー情報を表示できません: 未認証です");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(message.User))
+            {
+                AddLog("ユーザー情報を表示できません: 対象ユーザーが見つかりません");
+                return;
+            }
+
+            MainController.ShowLoadingIndicatorBusy();
+
+            try
+            {
+                var (userProfile, error) = await _slackService.GetUserProfileAsync(message.User);
+                if (userProfile == null)
+                {
+                    AddLog($"ユーザー情報の取得に失敗しました: {error}");
+                    await ShowMessageDialogAsync("ユーザー情報", $"ユーザー情報を取得できませんでした。{Environment.NewLine}{error}");
+                    return;
+                }
+
+                await ShowUserProfileDialogAsync(userProfile, message.UserAvatarUri);
+            }
+            finally
+            {
+                MainController.SetLoadingIndicatorIdle();
+            }
+        }
+
         private async void ChannelCardView_ReactionRequested(ChannelCardView sender, MessageReactionClickInfo reactionInfo)
         {
             if (!_slackService.IsAuthenticated)
@@ -449,6 +483,148 @@ namespace SlackSitter
         {
             ImagePreviewImage.Source = null;
             ImagePreviewOverlay.Visibility = Visibility.Collapsed;
+        }
+
+        private async Task ShowUserProfileDialogAsync(SlackUserProfileInfo userProfile, Uri? fallbackAvatarUri)
+        {
+            var content = new StackPanel
+            {
+                Spacing = 16,
+                MinWidth = 320
+            };
+
+            var headerPanel = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Spacing = 12
+            };
+
+            var avatarBorder = new Border
+            {
+                Width = 64,
+                Height = 64,
+                CornerRadius = new CornerRadius(32),
+                BorderThickness = new Thickness(1),
+                BorderBrush = new SolidColorBrush(Microsoft.UI.Colors.LightGray),
+                Background = new SolidColorBrush(Microsoft.UI.Colors.White)
+            };
+
+            var avatarSource = CreateDialogAvatarImageSource(userProfile.ImageUrl, fallbackAvatarUri);
+            if (avatarSource != null)
+            {
+                avatarBorder.Background = new ImageBrush
+                {
+                    ImageSource = avatarSource,
+                    Stretch = Stretch.UniformToFill
+                };
+            }
+
+            var namePanel = new StackPanel
+            {
+                VerticalAlignment = VerticalAlignment.Center,
+                Spacing = 4
+            };
+            namePanel.Children.Add(new TextBlock
+            {
+                Text = string.IsNullOrWhiteSpace(userProfile.DisplayName) ? userProfile.UserName : userProfile.DisplayName,
+                FontSize = 20,
+                FontWeight = FontWeights.SemiBold
+            });
+
+            if (!string.IsNullOrWhiteSpace(userProfile.RealName) && !string.Equals(userProfile.RealName, userProfile.DisplayName, StringComparison.Ordinal))
+            {
+                namePanel.Children.Add(new TextBlock
+                {
+                    Text = userProfile.RealName,
+                    FontSize = 13,
+                    Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray)
+                });
+            }
+
+            namePanel.Children.Add(new TextBlock
+            {
+                Text = userProfile.UserId,
+                FontSize = 12,
+                Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray)
+            });
+
+            headerPanel.Children.Add(avatarBorder);
+            headerPanel.Children.Add(namePanel);
+            content.Children.Add(headerPanel);
+
+            AddUserInfoRow(content, "ユーザー名", userProfile.UserName);
+            AddUserInfoRow(content, "表示名", userProfile.DisplayName);
+            AddUserInfoRow(content, "本名", userProfile.RealName);
+            AddUserInfoRow(content, "肩書き", userProfile.Title);
+            AddUserInfoRow(content, "ステータス", userProfile.StatusText);
+
+            var dialog = new ContentDialog
+            {
+                Title = "ユーザー情報",
+                CloseButtonText = "閉じる",
+                DefaultButton = ContentDialogButton.Close,
+                Content = content,
+                XamlRoot = MainPanel.XamlRoot ?? AuthenticationPanel.XamlRoot
+            };
+
+            await dialog.ShowAsync();
+        }
+
+        private async Task ShowMessageDialogAsync(string title, string message)
+        {
+            var dialog = new ContentDialog
+            {
+                Title = title,
+                CloseButtonText = "閉じる",
+                DefaultButton = ContentDialogButton.Close,
+                Content = new TextBlock
+                {
+                    Text = message,
+                    TextWrapping = TextWrapping.Wrap,
+                    MaxWidth = 360
+                },
+                XamlRoot = MainPanel.XamlRoot ?? AuthenticationPanel.XamlRoot
+            };
+
+            await dialog.ShowAsync();
+        }
+
+        private static void AddUserInfoRow(Panel panel, string label, string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return;
+            }
+
+            var row = new StackPanel
+            {
+                Spacing = 2
+            };
+            row.Children.Add(new TextBlock
+            {
+                Text = label,
+                FontSize = 12,
+                Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray)
+            });
+            row.Children.Add(new TextBlock
+            {
+                Text = value,
+                TextWrapping = TextWrapping.Wrap,
+                FontSize = 14
+            });
+            panel.Children.Add(row);
+        }
+
+        private static ImageSource? CreateDialogAvatarImageSource(string? imageUrl, Uri? fallbackAvatarUri)
+        {
+            if (!string.IsNullOrWhiteSpace(imageUrl) && Uri.TryCreate(imageUrl, UriKind.Absolute, out var imageUri))
+            {
+                return new BitmapImage(imageUri);
+            }
+
+            return fallbackAvatarUri != null
+                ? new BitmapImage(fallbackAvatarUri)
+                : null;
         }
 
         private sealed class DownloadedImageResult
@@ -726,7 +902,7 @@ namespace SlackSitter
             }
         }
 
-        private async void AutoRefreshTimer_Tick(object sender, object e)
+        private async void AutoRefreshTimer_Tick(object? sender, object e)
         {
             if (!_isAutoRefreshEnabled || !_slackService.IsAuthenticated || _isRefreshingData)
             {

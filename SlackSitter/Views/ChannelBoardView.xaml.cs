@@ -14,6 +14,7 @@ namespace SlackSitter.Views
         public event TypedEventHandler<ChannelCardView, Button>? ShowImageRequested;
         public event TypedEventHandler<ChannelCardView, ImageSource>? ImagePreviewRequested;
         public event TypedEventHandler<ChannelCardView, MessageReactionClickInfo>? ReactionRequested;
+        public event TypedEventHandler<ChannelCardView, MessageDisplayItem>? UserRequested;
 
         public ChannelBoardView()
         {
@@ -49,6 +50,11 @@ namespace SlackSitter.Views
         private void ChannelCardView_ReactionRequested(ChannelCardView sender, MessageReactionClickInfo reactionInfo)
         {
             ReactionRequested?.Invoke(sender, reactionInfo);
+        }
+
+        private void ChannelCardView_UserRequested(ChannelCardView sender, MessageDisplayItem message)
+        {
+            UserRequested?.Invoke(sender, message);
         }
     }
 }

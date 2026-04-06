@@ -8,6 +8,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using SlackSitter.Models;
 
 namespace SlackSitter.Services
 {
@@ -214,6 +215,44 @@ namespace SlackSitter.Services
                 System.Diagnostics.Debug.WriteLine($"Error getting user image for {userId}: {ex.Message}");
                 _userImageUrlCache[userId] = null;
                 return null;
+            }
+        }
+
+        public async Task<(SlackUserProfileInfo? UserProfile, string? Error)> GetUserProfileAsync(string? userId)
+        {
+            if (_client == null)
+            {
+                return (null, "未認証です");
+            }
+
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                return (null, "ユーザー ID が指定されていません");
+            }
+
+            try
+            {
+                var userProfile = await ExecuteWithRetryAsync(async () =>
+                {
+                    var userInfo = await _client.Users.Info(userId);
+                    return new SlackUserProfileInfo
+                    {
+                        UserId = userInfo.Id ?? userId,
+                        UserName = userInfo.Name ?? string.Empty,
+                        DisplayName = userInfo.Profile?.DisplayName ?? string.Empty,
+                        RealName = userInfo.Profile?.RealName ?? string.Empty,
+                        Title = userInfo.Profile?.Title ?? string.Empty,
+                        StatusText = userInfo.Profile?.StatusText ?? string.Empty,
+                        ImageUrl = userInfo.Profile?.Image192 ?? userInfo.Profile?.Image72 ?? userInfo.Profile?.Image48 ?? string.Empty
+                    };
+                });
+
+                return (userProfile, null);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error getting user profile for {userId}: {ex.Message}");
+                return (null, ex.Message);
             }
         }
 

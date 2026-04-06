@@ -31,6 +31,7 @@
             <views:ChannelBoardView
                 x:Name="AllChannelBoard"
                 ReactionRequested="ChannelCardView_ReactionRequested"
+                UserRequested="ChannelCardView_UserRequested"
                 Visibility="Collapsed"
                 ImagePreviewRequested="ChannelCardView_ImagePreviewRequested"
                 ShowImageRequested="ChannelCardView_ShowImageRequested" />
@@ -38,6 +39,7 @@
             <views:ChannelBoardView
                 x:Name="JoinedChannelBoard"
                 ReactionRequested="ChannelCardView_ReactionRequested"
+                UserRequested="ChannelCardView_UserRequested"
                 Visibility="Visible"
                 ImagePreviewRequested="ChannelCardView_ImagePreviewRequested"
                 ShowImageRequested="ChannelCardView_ShowImageRequested" />
@@ -45,6 +47,7 @@
             <views:ChannelBoardView
                 x:Name="NotJoinedChannelBoard"
                 ReactionRequested="ChannelCardView_ReactionRequested"
+                UserRequested="ChannelCardView_UserRequested"
                 Visibility="Collapsed"
                 ImagePreviewRequested="ChannelCardView_ImagePreviewRequested"
                 ShowImageRequested="ChannelCardView_ShowImageRequested" />
@@ -52,6 +55,7 @@
             <views:ChannelBoardView
                 x:Name="CustomChannelBoard"
                 ReactionRequested="ChannelCardView_ReactionRequested"
+                UserRequested="ChannelCardView_UserRequested"
                 Visibility="Collapsed"
                 ImagePreviewRequested="ChannelCardView_ImagePreviewRequested"
                 ShowImageRequested="ChannelCardView_ShowImageRequested" />
