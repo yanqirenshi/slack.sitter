@@ -528,7 +528,8 @@ namespace SlackSitter
             {
                 Text = string.IsNullOrWhiteSpace(userProfile.DisplayName) ? userProfile.UserName : userProfile.DisplayName,
                 FontSize = 20,
-                FontWeight = FontWeights.SemiBold
+                FontWeight = FontWeights.SemiBold,
+                IsTextSelectionEnabled = true
             });
 
             if (!string.IsNullOrWhiteSpace(userProfile.RealName) && !string.Equals(userProfile.RealName, userProfile.DisplayName, StringComparison.Ordinal))
@@ -537,7 +538,8 @@ namespace SlackSitter
                 {
                     Text = userProfile.RealName,
                     FontSize = 13,
-                    Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray)
+                    Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
+                    IsTextSelectionEnabled = true
                 });
             }
 
@@ -545,7 +547,8 @@ namespace SlackSitter
             {
                 Text = userProfile.UserId,
                 FontSize = 12,
-                Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray)
+                Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
+                IsTextSelectionEnabled = true
             });
 
             headerPanel.Children.Add(avatarBorder);
@@ -581,7 +584,8 @@ namespace SlackSitter
                 {
                     Text = message,
                     TextWrapping = TextWrapping.Wrap,
-                    MaxWidth = 360
+                    MaxWidth = 360,
+                    IsTextSelectionEnabled = true
                 },
                 XamlRoot = MainPanel.XamlRoot ?? AuthenticationPanel.XamlRoot
             };
@@ -604,13 +608,15 @@ namespace SlackSitter
             {
                 Text = label,
                 FontSize = 12,
-                Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray)
+                Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
+                IsTextSelectionEnabled = true
             });
             row.Children.Add(new TextBlock
             {
                 Text = value,
                 TextWrapping = TextWrapping.Wrap,
-                FontSize = 14
+                FontSize = 14,
+                IsTextSelectionEnabled = true
             });
             panel.Children.Add(row);
         }
